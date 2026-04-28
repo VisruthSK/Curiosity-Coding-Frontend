@@ -479,7 +479,7 @@ export default function CsvCoder() {
               autoFocus
               className="mt-2 w-full rounded-lg border border-stone-300 bg-white px-3 py-3 text-base text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
               id="rename-coder"
-              onChange={(event) =>
+              onInput={(event) =>
                 setModal({ type: "rename", value: event.currentTarget.value })
               }
               onKeyDown={(event) => {
@@ -571,7 +571,7 @@ export default function CsvCoder() {
                 autoFocus
                 className="w-full rounded-lg border border-stone-300 bg-white px-3 py-3 text-base text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
                 id="first-name"
-                onChange={(event) => setNameInput(event.currentTarget.value)}
+                onInput={(event) => setNameInput(event.currentTarget.value)}
                 value={nameInput}
               />
               {error ? <p className="text-sm text-red-700 dark:text-red-400">{error}</p> : null}
@@ -871,7 +871,7 @@ export default function CsvCoder() {
                   className="mt-2 min-h-32 w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm leading-6 text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
                   id="notes"
                   onFocus={keepNotesVisible}
-                  onChange={(event) =>
+                  onInput={(event) =>
                     updateCurrentRow(
                       NOTES_FIELD,
                       event.currentTarget.value.trim() ? event.currentTarget.value : "NA",
