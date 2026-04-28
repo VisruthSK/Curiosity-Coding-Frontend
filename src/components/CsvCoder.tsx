@@ -1,10 +1,7 @@
-import Papa from "papaparse";
-import type { ParseResult } from "papaparse";
 import type { ChangeEvent, FocusEvent, SubmitEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { codingGroupLabels, codingOptions } from "../data/codingOptions";
-
-type CsvRow = Record<string, string>;
+import { parseCsvFile, unparseCsv, type CsvRow } from "../utils/csv";
 
 type SavedSession = {
   firstName: string;
@@ -27,6 +24,15 @@ const RUBRIC_URL =
   "https://www.dropbox.com/scl/fi/hk484lt52g8u4j87q8wcg/RubricApril2026.xlsx";
 
 const groupOrder = ["0", "1", "2", "3"] as const;
+const codingOptionsByGroup = codingOptions.reduce<
+  Record<(typeof groupOrder)[number], typeof codingOptions>
+>(
+  (groups, option) => {
+    groups[option.group].push(option);
+    return groups;
+  },
+  { "0": [], "1": [], "2": [], "3": [] },
+);
 const iconPaths = {
   checkCircle: [
     ["circle", { cx: "12", cy: "12", r: "10" }],
@@ -131,6 +137,15 @@ function normalizeRow(row: CsvRow, fields: string[]) {
   }, {});
 }
 
+function isCsvRow(value: unknown): value is CsvRow {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.values(value).every((fieldValue) => typeof fieldValue === "string")
+  );
+}
+
 function readSavedSession(): SavedSession | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -143,7 +158,9 @@ function readSavedSession(): SavedSession | null {
       typeof parsed.firstName !== "string" ||
       typeof parsed.fileName !== "string" ||
       !Array.isArray(parsed.fields) ||
-      !Array.isArray(parsed.rows)
+      !parsed.fields.every((field) => typeof field === "string") ||
+      !Array.isArray(parsed.rows) ||
+      !parsed.rows.every(isCsvRow)
     ) {
       return null;
     }
@@ -174,7 +191,7 @@ function writeDownload(content: string, fileName: string) {
   document.body.appendChild(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export default function CsvCoder() {
@@ -261,44 +278,35 @@ export default function CsvCoder() {
     setError("");
   }
 
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) {
       return;
     }
 
     setError("");
-    Papa.parse<CsvRow>(file, {
-      header: true,
-      skipEmptyLines: "greedy",
-      dynamicTyping: false,
-      complete: (results: ParseResult<CsvRow>) => {
-        const parsedFields = results.meta.fields?.filter(Boolean) ?? [];
 
-        if (!parsedFields.includes(LABEL_FIELD) || !parsedFields.includes(NOTES_FIELD)) {
-          setError("CSV must include Label and Notes columns.");
-          return;
-        }
+    try {
+      const { fields: parsedFields, rows: parsedRows } = await parseCsvFile(file);
 
-        const parsedRows = results.data
-          .map((row) => normalizeRow(row, parsedFields))
-          .filter((row) => parsedFields.some((field) => String(row[field] ?? "").trim() !== ""));
+      if (!parsedFields.includes(LABEL_FIELD) || !parsedFields.includes(NOTES_FIELD)) {
+        setError("CSV must include Label and Notes columns.");
+        return;
+      }
 
-        if (!parsedRows.length) {
-          setError("CSV did not contain any rows to code.");
-          return;
-        }
+      if (!parsedRows.length) {
+        setError("CSV did not contain any rows to code.");
+        return;
+      }
 
-        setFileName(file.name);
-        setFields(parsedFields);
-        setRows(parsedRows);
-        setCurrentIndex(0);
-        setIsOverview(false);
-      },
-      error: (parseError: Error) => {
-        setError(parseError.message);
-      },
-    });
+      setFileName(file.name);
+      setFields(parsedFields);
+      setRows(parsedRows.map((row) => normalizeRow(row, parsedFields)));
+      setCurrentIndex(0);
+      setIsOverview(false);
+    } catch (parseError) {
+      setError(parseError instanceof Error ? parseError.message : "CSV could not be parsed.");
+    }
   }
 
   function updateCurrentRow(field: string, value: string) {
@@ -413,10 +421,7 @@ export default function CsvCoder() {
       nextRow[NOTES_FIELD] = isBlankOrNA(nextRow[NOTES_FIELD]) ? "NA" : nextRow[NOTES_FIELD];
       return nextRow;
     });
-    const csv = Papa.unparse(exportRows, {
-      columns: fields,
-      newline: "\r\n",
-    });
+    const csv = unparseCsv(exportRows, fields);
 
     writeDownload(csv, getExportName(fileName, firstName));
   }
@@ -794,7 +799,7 @@ export default function CsvCoder() {
                   <a
                     className="text-teal-800 underline decoration-teal-700/45 underline-offset-4 transition hover:text-teal-900 hover:decoration-teal-900 dark:text-blue-300 dark:decoration-blue-500/70 dark:hover:text-blue-200 dark:hover:decoration-blue-300"
                     href={RUBRIC_URL}
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     target="_blank"
                   >
                     Rubric
@@ -813,8 +818,7 @@ export default function CsvCoder() {
                       {codingGroupLabels[group]}
                     </legend>
                     <div className="grid gap-2">
-                      {codingOptions
-                        .filter((option) => option.group === group)
+                      {codingOptionsByGroup[group]
                         .map((option) => {
                           const checked = selectedCodes.includes(option.code);
                           return (

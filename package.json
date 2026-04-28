@@ -13,7 +13,7 @@
   "dependencies": {
     "@astrojs/react": "^5.0.4",
     "astro": "^6.1.9",
-    "papaparse": "^5.5.3",
+    "d3-dsv": "^3.0.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },
@@ -21,7 +21,6 @@
     "@astrojs/check": "^0.9.8",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.4",
-    "@types/papaparse": "^5.5.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.5.0",

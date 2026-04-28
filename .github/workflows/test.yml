@@ -20,3 +20,11 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run build
       - run: pnpm test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-artifacts
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
