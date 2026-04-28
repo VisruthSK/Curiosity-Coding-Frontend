@@ -15,7 +15,6 @@
   const setTheme = (theme) => {
     root.classList.toggle("dark", theme === "dark");
     root.dataset.theme = theme;
-    root.style.colorScheme = theme;
   };
 
   setTheme(storedTheme() ?? (media.matches ? "dark" : "light"));

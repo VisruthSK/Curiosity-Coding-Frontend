@@ -14,7 +14,6 @@ function setTheme(theme: Theme) {
 
   root.classList.toggle("dark", theme === "dark");
   root.dataset.theme = theme;
-  root.style.colorScheme = theme;
   window.localStorage.setItem(THEME_STORAGE_KEY, theme);
 }
 

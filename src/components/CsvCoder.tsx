@@ -1,8 +1,11 @@
 import {
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Circle,
   Download,
   FileText,
+  ListChecks,
   RotateCcw,
   Upload,
 } from "lucide-react";
@@ -118,6 +121,7 @@ export default function CsvCoder() {
   const [fields, setFields] = useState<string[]>([]);
   const [rows, setRows] = useState<CsvRow[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isOverview, setIsOverview] = useState(false);
   const [error, setError] = useState("");
   const [saveStatus, setSaveStatus] = useState("Not saved");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -174,7 +178,6 @@ export default function CsvCoder() {
     () => rows.filter((row) => !isBlankOrNA(row[LABEL_FIELD])).length,
     [rows],
   );
-  const completionPercentage = rows.length ? Math.round((codedCount / rows.length) * 100) : 0;
   const rowNumber = rows.length ? currentIndex + 1 : 0;
 
   function confirmName(event: SubmitEvent<HTMLFormElement>) {
@@ -224,6 +227,7 @@ export default function CsvCoder() {
         setFields(parsedFields);
         setRows(parsedRows);
         setCurrentIndex(0);
+        setIsOverview(false);
       },
       error: (parseError) => {
         setError(parseError.message);
@@ -256,26 +260,52 @@ export default function CsvCoder() {
   }
 
   function goToPrevious() {
+    if (isOverview) {
+      setCurrentIndex(rows.length - 1);
+      setIsOverview(false);
+      return;
+    }
+
     setCurrentIndex((index) => Math.max(index - 1, 0));
   }
 
   function goToNext() {
+    if (currentIndex >= rows.length - 1) {
+      setIsOverview(true);
+      return;
+    }
+
     setCurrentIndex((index) => Math.min(index + 1, rows.length - 1));
   }
 
-  function clearSavedWork() {
-    if (!window.confirm("Start over and clear saved work?")) {
+  function openRow(index: number) {
+    setCurrentIndex(index);
+    setIsOverview(false);
+  }
+
+  function promptRename() {
+    const nextName = window.prompt("First name", firstName)?.trim();
+
+    if (!nextName) {
+      return;
+    }
+
+    setFirstName(nextName);
+    setNameInput(nextName);
+    setError("");
+  }
+
+  function clearCurrentCsv() {
+    if (rows.length && !window.confirm("Start over and clear current CSV progress?")) {
       return;
     }
 
     window.localStorage.removeItem(STORAGE_KEY);
-    setFirstName("");
-    setNameInput("");
-    setIsNameConfirmed(false);
     setFileName("");
     setFields([]);
     setRows([]);
     setCurrentIndex(0);
+    setIsOverview(false);
     setError("");
     setSaveStatus("Not saved");
     if (fileInputRef.current) {
@@ -300,7 +330,7 @@ export default function CsvCoder() {
 
   if (!hydrated) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-6 py-10">
+      <main className="flex h-dvh items-center justify-center overflow-hidden px-6 py-10">
         <div className="h-2 w-44 overflow-hidden rounded bg-neutral-200 dark:bg-neutral-800">
           <div className="h-full w-1/2 bg-teal-700 dark:bg-blue-700" />
         </div>
@@ -310,8 +340,8 @@ export default function CsvCoder() {
 
   if (!isNameConfirmed) {
     return (
-      <main className="min-h-screen px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
-        <section className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[1800px] items-center justify-center">
+      <main className="h-dvh overflow-hidden px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
+        <section className="mx-auto flex h-full w-full max-w-[1800px] items-center justify-center">
           <div className="w-full rounded-lg border border-stone-200 bg-white p-5 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:max-w-lg sm:p-6 lg:p-8">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
@@ -356,8 +386,8 @@ export default function CsvCoder() {
 
   if (!rows.length) {
     return (
-      <main className="min-h-screen px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
-        <section className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[1800px] flex-col">
+      <main className="h-dvh overflow-hidden px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
+        <section className="mx-auto flex h-full w-full max-w-[1800px] flex-col">
           <div className="rounded-lg border border-stone-200 bg-white p-5 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-6 lg:p-8">
           <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -365,12 +395,18 @@ export default function CsvCoder() {
               <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
                 Choose CSV
               </h1>
-              <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">Coder: {firstName}</p>
+              <button
+                className="mt-2 text-sm text-neutral-600 underline decoration-stone-300 underline-offset-4 transition hover:text-teal-800 hover:decoration-teal-700 dark:text-neutral-400 dark:decoration-neutral-700 dark:hover:text-blue-200 dark:hover:decoration-blue-500"
+                onClick={promptRename}
+                type="button"
+              >
+                Coder: {firstName}
+              </button>
             </div>
             <div className="flex items-center gap-2">
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                onClick={clearSavedWork}
+                onClick={promptRename}
                 type="button"
               >
                 <RotateCcw aria-hidden="true" size={16} />
@@ -407,9 +443,9 @@ export default function CsvCoder() {
   const detailFields = fields.filter((field) => field !== LABEL_FIELD && field !== NOTES_FIELD);
 
   return (
-    <main className="min-h-screen px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-5 lg:px-6 xl:px-8">
-      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-4 sm:gap-5">
-        <header className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6">
+    <main className="h-dvh overflow-hidden px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-5 lg:px-6 xl:px-8">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1800px] flex-col gap-4 sm:gap-5">
+        <header className="shrink-0 rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <p className="text-sm font-medium text-teal-800 dark:text-blue-300">
@@ -434,7 +470,7 @@ export default function CsvCoder() {
               </div>
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 sm:w-auto"
-                onClick={clearSavedWork}
+                onClick={clearCurrentCsv}
                 type="button"
               >
                 <RotateCcw aria-hidden="true" size={16} />
@@ -446,21 +482,80 @@ export default function CsvCoder() {
           <div className="mt-5">
             <div className="mb-2 flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-400">
               <span>
-                Question {rowNumber} of {rows.length}
+                {isOverview ? "Overview" : `Question ${rowNumber} of ${rows.length}`}
               </span>
               <span>{saveStatus}</span>
             </div>
-            <div className="h-2 overflow-hidden rounded bg-stone-200 dark:bg-neutral-800">
-              <div
-                className="h-full bg-teal-700 transition-all dark:bg-blue-700"
-                style={{ width: `${completionPercentage}%` }}
-              />
-            </div>
+            <progress
+              aria-label="Coding progress"
+              className="coding-progress"
+              max={rows.length}
+              value={codedCount}
+            />
           </div>
         </header>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(400px,32vw)]">
-          <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6 xl:min-h-[calc(100vh-15rem)]">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto xl:grid-cols-[minmax(0,1fr)_minmax(400px,32vw)] xl:overflow-hidden">
+          {isOverview ? (
+            <section className="min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6 xl:col-span-2">
+              <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                <ListChecks aria-hidden="true" size={18} />
+                Overview
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {rows.map((row, index) => {
+                  const hasCoding = !isBlankOrNA(row[LABEL_FIELD]);
+                  const hasNotes = !isBlankOrNA(row[NOTES_FIELD]);
+
+                  return (
+                    <button
+                      className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-left transition hover:border-teal-700 hover:bg-teal-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-blue-500 dark:hover:bg-blue-950/30"
+                      key={`${row.Question ?? "row"}-${index}`}
+                      onClick={() => openRow(index)}
+                      type="button"
+                    >
+                      <span className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">
+                        Question {index + 1}
+                      </span>
+                      <span className="flex flex-wrap gap-2">
+                        <span
+                          className={
+                            hasCoding
+                              ? "inline-flex items-center gap-1 rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200"
+                              : "inline-flex items-center gap-1 rounded border border-stone-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400"
+                          }
+                        >
+                          {hasCoding ? (
+                            <CheckCircle2 aria-hidden="true" size={14} />
+                          ) : (
+                            <Circle aria-hidden="true" size={14} />
+                          )}
+                          {hasCoding ? "Coding" : "No coding"}
+                        </span>
+                        <span
+                          className={
+                            hasNotes
+                              ? "inline-flex items-center gap-1 rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-800 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-200"
+                              : "inline-flex items-center gap-1 rounded border border-stone-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400"
+                          }
+                        >
+                          {hasNotes ? (
+                            <CheckCircle2 aria-hidden="true" size={14} />
+                          ) : (
+                            <Circle aria-hidden="true" size={14} />
+                          )}
+                          {hasNotes ? "Note" : "No note"}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ) : (
+            <>
+          <section className="min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6">
             <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
               <FileText aria-hidden="true" size={18} />
               Current row
@@ -491,17 +586,21 @@ export default function CsvCoder() {
             </dl>
           </section>
 
-          <aside className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6 xl:sticky xl:top-5 xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto">
+          <aside className="min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6">
             <div className="space-y-5">
               <div>
-                <a
-                  className="text-lg font-semibold text-neutral-950 underline decoration-teal-700/35 underline-offset-4 transition hover:text-teal-800 hover:decoration-teal-700 dark:text-neutral-50 dark:decoration-blue-500/60 dark:hover:text-blue-200 dark:hover:decoration-blue-400"
-                  href={RUBRIC_URL}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  Coding
-                </a>
+                <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
+                  Coding (
+                  <a
+                    className="text-teal-800 underline decoration-teal-700/45 underline-offset-4 transition hover:text-teal-900 hover:decoration-teal-900 dark:text-blue-300 dark:decoration-blue-500/70 dark:hover:text-blue-200 dark:hover:decoration-blue-300"
+                    href={RUBRIC_URL}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Rubric
+                  </a>
+                  )
+                </h2>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                   {selectedCodes.length ? selectedCodes.join(";") : "NA"}
                 </p>
@@ -560,13 +659,15 @@ export default function CsvCoder() {
               </div>
             </div>
           </aside>
+            </>
+          )}
         </div>
 
-        <footer className="sticky bottom-0 rounded-lg border border-stone-200 bg-white/95 p-3 shadow-soft backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 sm:p-4">
+        <footer className="shrink-0 rounded-lg border border-stone-200 bg-white/95 p-3 shadow-soft backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 sm:p-4">
           <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
             <button
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
-              disabled={currentIndex === 0}
+              disabled={!isOverview && currentIndex === 0}
               onClick={goToPrevious}
               type="button"
             >
@@ -578,7 +679,7 @@ export default function CsvCoder() {
               Output: {getExportName(fileName, firstName)}
             </div>
 
-            {currentIndex === rows.length - 1 ? (
+            {isOverview ? (
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
                 onClick={exportCsv}

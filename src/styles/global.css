@@ -3,7 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   background: #f7f5f1;
   color: #252525;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
@@ -13,15 +13,18 @@
 :root.dark {
   background: #11110f;
   color: #f5f5f4;
+  color-scheme: dark;
 }
 
 html {
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  min-height: 100%;
+  height: 100%;
   margin: 0;
+  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(247, 245, 241, 0.95)),
     #f7f5f1;
@@ -31,6 +34,42 @@ body {
   background:
     linear-gradient(180deg, rgba(18, 18, 16, 0.96), rgba(28, 27, 24, 0.98)),
     #11110f;
+}
+
+.coding-progress {
+  appearance: none;
+  background: #e7e5e4;
+  border: 0;
+  border-radius: 999px;
+  display: block;
+  height: 0.5rem;
+  overflow: hidden;
+  width: 100%;
+}
+
+.coding-progress::-webkit-progress-bar {
+  background: #e7e5e4;
+}
+
+.coding-progress::-webkit-progress-value {
+  background: #0f766e;
+}
+
+.coding-progress::-moz-progress-bar {
+  background: #0f766e;
+}
+
+:root.dark .coding-progress,
+:root.dark .coding-progress::-webkit-progress-bar {
+  background: #262626;
+}
+
+:root.dark .coding-progress::-webkit-progress-value {
+  background: #1d4ed8;
+}
+
+:root.dark .coding-progress::-moz-progress-bar {
+  background: #1d4ed8;
 }
 
 button,
