@@ -1,6 +1,5 @@
 import { csvFormatRows, csvParseRows } from "d3-dsv";
-import type { ChangeEvent, FocusEvent, SubmitEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { codingGroupLabels, codingOptions } from "../data/codingOptions";
 
 type CsvRow = Record<string, string>;
@@ -265,7 +264,7 @@ export default function CsvCoder() {
   );
   const rowNumber = rows.length ? currentIndex + 1 : 0;
 
-  function confirmName(event: SubmitEvent<HTMLFormElement>) {
+  function confirmName(event: Event) {
     event.preventDefault();
     const cleanedName = formatName(nameInput);
 
@@ -280,8 +279,8 @@ export default function CsvCoder() {
     setError("");
   }
 
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  async function handleFileChange(event: Event) {
+    const file = (event.currentTarget as HTMLInputElement).files?.[0];
     if (!file) {
       return;
     }
@@ -440,9 +439,11 @@ export default function CsvCoder() {
     writeDownload(csv, getExportName(fileName, firstName));
   }
 
-  function keepNotesVisible(event: FocusEvent<HTMLTextAreaElement>) {
+  function keepNotesVisible(event: Event) {
+    const notes = event.currentTarget as HTMLTextAreaElement;
+
     window.setTimeout(() => {
-      event.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" });
+      notes.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 150);
   }
 
@@ -479,7 +480,7 @@ export default function CsvCoder() {
               className="mt-2 w-full rounded-lg border border-stone-300 bg-white px-3 py-3 text-base text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
               id="rename-coder"
               onChange={(event) =>
-                setModal({ type: "rename", value: event.target.value })
+                setModal({ type: "rename", value: event.currentTarget.value })
               }
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -570,7 +571,7 @@ export default function CsvCoder() {
                 autoFocus
                 className="w-full rounded-lg border border-stone-300 bg-white px-3 py-3 text-base text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
                 id="first-name"
-                onChange={(event) => setNameInput(event.target.value)}
+                onChange={(event) => setNameInput(event.currentTarget.value)}
                 value={nameInput}
               />
               {error ? <p className="text-sm text-red-700 dark:text-red-400">{error}</p> : null}
@@ -871,7 +872,10 @@ export default function CsvCoder() {
                   id="notes"
                   onFocus={keepNotesVisible}
                   onChange={(event) =>
-                    updateCurrentRow(NOTES_FIELD, event.target.value.trim() ? event.target.value : "NA")
+                    updateCurrentRow(
+                      NOTES_FIELD,
+                      event.currentTarget.value.trim() ? event.currentTarget.value : "NA",
+                    )
                   }
                   value={isBlankOrNA(currentRow?.[NOTES_FIELD]) ? "" : currentRow?.[NOTES_FIELD] ?? ""}
                 />
