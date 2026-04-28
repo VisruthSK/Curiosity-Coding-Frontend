@@ -379,8 +379,94 @@ export default function CsvCoder() {
     );
   }
 
+  const modalElement = modal ? (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-950/35 px-4 backdrop-blur-sm dark:bg-black/55">
+      <section
+        aria-modal="true"
+        className="w-full max-w-sm rounded-lg border border-stone-200 bg-white p-5 shadow-soft dark:border-neutral-700 dark:bg-neutral-900"
+        role="dialog"
+      >
+        {modal.type === "rename" ? (
+          <>
+            <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
+              Rename coder
+            </h2>
+            <label
+              className="mt-4 block text-sm font-medium text-neutral-800 dark:text-neutral-200"
+              htmlFor="rename-coder"
+            >
+              First name
+            </label>
+            <input
+              autoFocus
+              className="mt-2 w-full rounded-lg border border-stone-300 bg-white px-3 py-3 text-base text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
+              id="rename-coder"
+              onChange={(event) =>
+                setModal({ type: "rename", value: event.target.value })
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  confirmRename();
+                }
+              }}
+              value={modal.value}
+            />
+            {error ? <p className="mt-3 text-sm text-red-700 dark:text-red-400">{error}</p> : null}
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                className="inline-flex items-center justify-center rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                onClick={() => {
+                  setError("");
+                  setModal(null);
+                }}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="inline-flex items-center justify-center rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
+                onClick={confirmRename}
+                type="button"
+              >
+                Save
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
+              Start over?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-400">
+              {modal.target === "signin"
+                ? "This will return to the first-name screen."
+                : "This will clear the current CSV progress and return to file selection."}
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                className="inline-flex items-center justify-center rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                onClick={() => setModal(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="inline-flex items-center justify-center rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
+                onClick={confirmStartOver}
+                type="button"
+              >
+                Start over
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+    </div>
+  ) : null;
+
   if (!isNameConfirmed) {
     return (
+      <>
       <main className="h-dvh overflow-hidden px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
         <section className="mx-auto flex h-full w-full max-w-[1800px] items-center justify-center">
           <div className="w-full rounded-lg border border-stone-200 bg-white p-5 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:max-w-lg sm:p-6 lg:p-8">
@@ -422,11 +508,14 @@ export default function CsvCoder() {
           </div>
         </section>
       </main>
+      {modalElement}
+      </>
     );
   }
 
   if (!rows.length) {
     return (
+      <>
       <main className="h-dvh overflow-hidden px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
         <section className="mx-auto flex h-full w-full max-w-[1800px] flex-col">
           <div className="rounded-lg border border-stone-200 bg-white p-5 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-6 lg:p-8">
@@ -477,12 +566,15 @@ export default function CsvCoder() {
           </div>
         </section>
       </main>
+      {modalElement}
+      </>
     );
   }
 
   const detailFields = fields.filter((field) => field !== LABEL_FIELD && field !== NOTES_FIELD);
 
   return (
+    <>
     <main className="h-dvh overflow-hidden px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-5 lg:px-6 xl:px-8">
       <div className="mx-auto flex h-full min-h-0 w-full max-w-[1800px] flex-col gap-4 sm:gap-5">
         <header className="shrink-0 rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6">
@@ -742,5 +834,7 @@ export default function CsvCoder() {
         </footer>
       </div>
     </main>
+    {modalElement}
+    </>
   );
 }
