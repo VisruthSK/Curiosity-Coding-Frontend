@@ -10,7 +10,7 @@ import {
   Upload,
 } from "lucide-react";
 import Papa from "papaparse";
-import type { ChangeEvent, SubmitEvent } from "react";
+import type { ChangeEvent, FocusEvent, SubmitEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { codingGroupLabels, codingOptions } from "../data/codingOptions";
 
@@ -369,6 +369,12 @@ export default function CsvCoder() {
     writeDownload(csv, getExportName(fileName, firstName));
   }
 
+  function keepNotesVisible(event: FocusEvent<HTMLTextAreaElement>) {
+    window.setTimeout(() => {
+      event.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 150);
+  }
+
   if (!hydrated) {
     return (
       <main className="flex h-dvh items-center justify-center overflow-hidden px-6 py-10">
@@ -575,8 +581,8 @@ export default function CsvCoder() {
 
   return (
     <>
-    <main className="h-dvh overflow-hidden px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-5 lg:px-6 xl:px-8">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1800px] flex-col gap-4 sm:gap-5">
+    <main className="min-h-dvh overflow-y-auto px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-5 lg:px-6 xl:h-dvh xl:overflow-hidden xl:px-8">
+      <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-4 sm:gap-5 xl:h-full xl:min-h-0">
         <header className="shrink-0 rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
@@ -600,6 +606,16 @@ export default function CsvCoder() {
                 </span>
                 /{rows.length} coded
               </div>
+              {!isOverview ? (
+                <button
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 sm:w-auto"
+                  onClick={() => setIsOverview(true)}
+                  type="button"
+                >
+                  <ListChecks aria-hidden="true" size={16} />
+                  Review
+                </button>
+              ) : null}
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 sm:w-auto"
                 onClick={() => setModal({ type: "start-over", target: "csv" })}
@@ -627,9 +643,9 @@ export default function CsvCoder() {
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto xl:grid-cols-[minmax(0,1fr)_minmax(400px,32vw)] xl:overflow-hidden">
+        <div className="grid flex-1 gap-4 xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(400px,32vw)] xl:overflow-hidden">
           {isOverview ? (
-            <section className="min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6 xl:col-span-2">
+            <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6 xl:col-span-2 xl:min-h-0 xl:overflow-y-auto">
               <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
                 <ListChecks aria-hidden="true" size={18} />
                 Overview
@@ -687,7 +703,7 @@ export default function CsvCoder() {
             </section>
           ) : (
             <>
-          <section className="min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6">
+          <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto">
             <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
               <FileText aria-hidden="true" size={18} />
               Current row
@@ -718,7 +734,7 @@ export default function CsvCoder() {
             </dl>
           </section>
 
-          <aside className="min-h-0 overflow-y-auto rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6">
+          <aside className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto">
             <div className="space-y-5">
               <div>
                 <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
@@ -783,6 +799,7 @@ export default function CsvCoder() {
                 <textarea
                   className="mt-2 min-h-32 w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm leading-6 text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
                   id="notes"
+                  onFocus={keepNotesVisible}
                   onChange={(event) =>
                     updateCurrentRow(NOTES_FIELD, event.target.value.trim() ? event.target.value : "NA")
                   }
