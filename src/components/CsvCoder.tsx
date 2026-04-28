@@ -25,6 +25,8 @@ type SavedSession = {
 const STORAGE_KEY = "curiosity-coding-tool:v1";
 const LABEL_FIELD = "Label";
 const NOTES_FIELD = "Notes";
+const RUBRIC_URL =
+  "https://www.dropbox.com/scl/fi/hk484lt52g8u4j87q8wcg/RubricApril2026.xlsx";
 
 const groupOrder = ["0", "1", "2", "3"] as const;
 
@@ -262,6 +264,10 @@ export default function CsvCoder() {
   }
 
   function clearSavedWork() {
+    if (!window.confirm("Start over and clear saved work?")) {
+      return;
+    }
+
     window.localStorage.removeItem(STORAGE_KEY);
     setFirstName("");
     setNameInput("");
@@ -295,8 +301,8 @@ export default function CsvCoder() {
   if (!hydrated) {
     return (
       <main className="flex min-h-screen items-center justify-center px-6 py-10">
-        <div className="h-2 w-44 overflow-hidden rounded bg-neutral-200">
-          <div className="h-full w-1/2 bg-teal-700" />
+        <div className="h-2 w-44 overflow-hidden rounded bg-neutral-200 dark:bg-neutral-800">
+          <div className="h-full w-1/2 bg-teal-700 dark:bg-blue-700" />
         </div>
       </main>
     );
@@ -304,34 +310,45 @@ export default function CsvCoder() {
 
   if (!isNameConfirmed) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-5 py-8">
-        <section className="w-full max-w-md rounded-lg border border-stone-200 bg-white p-6 shadow-soft">
-          <div className="mb-6">
-            <p className="text-sm font-medium text-teal-800">Curiosity Coding</p>
-            <h1 className="mt-2 text-2xl font-semibold text-neutral-950">Enter first name</h1>
-          </div>
+      <main className="min-h-screen px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
+        <section className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[1800px] items-center justify-center">
+          <div className="w-full rounded-lg border border-stone-200 bg-white p-5 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:max-w-lg sm:p-6 lg:p-8">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-teal-800 dark:text-blue-300">
+                  Curiosity Coding
+                </p>
+                <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
+                  Enter first name
+                </h1>
+              </div>
+            </div>
 
-          <form className="space-y-4" onSubmit={confirmName}>
-            <label className="block text-sm font-medium text-neutral-800" htmlFor="first-name">
-              First name
-            </label>
-            <input
-              autoComplete="given-name"
-              autoFocus
-              className="w-full rounded-lg border border-stone-300 bg-white px-3 py-3 text-base text-neutral-950 shadow-sm transition focus:border-teal-700"
-              id="first-name"
-              onChange={(event) => setNameInput(event.target.value)}
-              value={nameInput}
-            />
-            {error ? <p className="text-sm text-red-700">{error}</p> : null}
-            <button
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"
-              type="submit"
-            >
-              Continue
-              <ChevronRight aria-hidden="true" size={18} />
-            </button>
-          </form>
+            <form className="space-y-4" onSubmit={confirmName}>
+              <label
+                className="block text-sm font-medium text-neutral-800 dark:text-neutral-200"
+                htmlFor="first-name"
+              >
+                First name
+              </label>
+              <input
+                autoComplete="given-name"
+                autoFocus
+                className="w-full rounded-lg border border-stone-300 bg-white px-3 py-3 text-base text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-50"
+                id="first-name"
+                onChange={(event) => setNameInput(event.target.value)}
+                value={nameInput}
+              />
+              {error ? <p className="text-sm text-red-700 dark:text-red-400">{error}</p> : null}
+              <button
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
+                type="submit"
+              >
+                Continue
+                <ChevronRight aria-hidden="true" size={18} />
+              </button>
+            </form>
+          </div>
         </section>
       </main>
     );
@@ -339,25 +356,30 @@ export default function CsvCoder() {
 
   if (!rows.length) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-5 py-8">
-        <section className="w-full max-w-xl rounded-lg border border-stone-200 bg-white p-6 shadow-soft">
-          <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+      <main className="min-h-screen px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
+        <section className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[1800px] flex-col">
+          <div className="rounded-lg border border-stone-200 bg-white p-5 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-6 lg:p-8">
+          <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-sm font-medium text-teal-800">Curiosity Coding</p>
-              <h1 className="mt-2 text-2xl font-semibold text-neutral-950">Choose CSV</h1>
-              <p className="mt-2 text-sm text-neutral-600">Coder: {firstName}</p>
+              <p className="text-sm font-medium text-teal-800 dark:text-blue-300">Curiosity Coding</p>
+              <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
+                Choose CSV
+              </h1>
+              <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">Coder: {firstName}</p>
             </div>
-            <button
-              className="inline-flex items-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-stone-50"
-              onClick={clearSavedWork}
-              type="button"
-            >
-              <RotateCcw aria-hidden="true" size={16} />
-              Start over
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                onClick={clearSavedWork}
+                type="button"
+              >
+                <RotateCcw aria-hidden="true" size={16} />
+                Start over
+              </button>
+            </div>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-6 flex flex-1 flex-col">
             <input
               accept=".csv,text/csv"
               className="sr-only"
@@ -367,14 +389,15 @@ export default function CsvCoder() {
               type="file"
             />
             <label
-              className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 px-5 py-12 text-center transition hover:border-teal-700 hover:bg-teal-50"
+              className="flex min-h-[42vh] w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 px-5 py-12 text-center transition hover:border-teal-700 hover:bg-teal-50 dark:border-neutral-700 dark:bg-neutral-950 dark:hover:border-blue-500 dark:hover:bg-blue-950/30"
               htmlFor="csv-upload"
             >
-              <Upload aria-hidden="true" className="mb-3 text-teal-800" size={28} />
-              <span className="text-base font-semibold text-neutral-950">Select CSV file</span>
-              <span className="mt-2 text-sm text-neutral-600">Parsed and autosaved in this browser</span>
+              <Upload aria-hidden="true" className="mb-3 text-teal-800 dark:text-blue-300" size={28} />
+              <span className="text-base font-semibold text-neutral-950 dark:text-neutral-50">Select CSV file</span>
+              <span className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">Parsed and autosaved in this browser</span>
             </label>
-            {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
+            {error ? <p className="mt-4 text-sm text-red-700 dark:text-red-400">{error}</p> : null}
+          </div>
           </div>
         </section>
       </main>
@@ -384,28 +407,33 @@ export default function CsvCoder() {
   const detailFields = fields.filter((field) => field !== LABEL_FIELD && field !== NOTES_FIELD);
 
   return (
-    <main className="min-h-screen px-4 py-5 text-neutral-950 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5">
-        <header className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft sm:p-5">
+    <main className="min-h-screen px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-5 lg:px-6 xl:px-8">
+      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-4 sm:gap-5">
+        <header className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-teal-800">Curiosity Coding</p>
+              <p className="text-sm font-medium text-teal-800 dark:text-blue-300">
+                Curiosity Coding
+              </p>
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <h1 className="max-w-full truncate text-2xl font-semibold text-neutral-950">
+                <h1 className="max-w-full truncate text-2xl font-semibold text-neutral-950 dark:text-neutral-50">
                   {fileName}
                 </h1>
-                <span className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">
+                <span className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 dark:border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-200">
                   {firstName}
                 </span>
               </div>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="text-sm text-neutral-600">
-                <span className="font-medium text-neutral-950">{codedCount}</span>/{rows.length} coded
+              <div className="text-sm text-neutral-600 dark:text-neutral-400">
+                <span className="font-medium text-neutral-950 dark:text-neutral-50">
+                  {codedCount}
+                </span>
+                /{rows.length} coded
               </div>
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-stone-50"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 sm:w-auto"
                 onClick={clearSavedWork}
                 type="button"
               >
@@ -416,58 +444,65 @@ export default function CsvCoder() {
           </div>
 
           <div className="mt-5">
-            <div className="mb-2 flex items-center justify-between text-sm text-neutral-600">
+            <div className="mb-2 flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-400">
               <span>
-                Row {rowNumber} of {rows.length}
+                Question {rowNumber} of {rows.length}
               </span>
               <span>{saveStatus}</span>
             </div>
-            <div className="h-2 overflow-hidden rounded bg-stone-200">
+            <div className="h-2 overflow-hidden rounded bg-stone-200 dark:bg-neutral-800">
               <div
-                className="h-full bg-teal-700 transition-all"
+                className="h-full bg-teal-700 transition-all dark:bg-blue-700"
                 style={{ width: `${completionPercentage}%` }}
               />
             </div>
           </div>
         </header>
 
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
-          <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft sm:p-5">
-            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(400px,32vw)]">
+          <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6 xl:min-h-[calc(100vh-15rem)]">
+            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
               <FileText aria-hidden="true" size={18} />
               Current row
             </div>
 
-            <dl className="grid gap-3">
+            <dl className="grid gap-3 lg:gap-4">
               {detailFields.map((field) => (
                 <div
                   className={
                     field === "Question"
-                      ? "rounded-lg border border-stone-200 bg-stone-50 p-4"
-                      : "grid gap-1 border-b border-stone-100 pb-3 last:border-b-0"
+                      ? "rounded-lg border border-stone-200 bg-stone-50 p-4 dark:border-neutral-800 dark:bg-neutral-950 sm:p-5 xl:p-6"
+                      : "grid gap-1 border-b border-stone-100 pb-3 dark:border-neutral-800 last:border-b-0"
                   }
                   key={field}
                 >
-                  <dt className="text-xs font-semibold uppercase text-neutral-500">{field}</dt>
+                  <dt className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-500">{field}</dt>
                   <dd
                     className={
                       field === "Question"
-                        ? "mt-2 whitespace-pre-wrap text-lg leading-7 text-neutral-950"
-                        : "whitespace-pre-wrap text-sm leading-6 text-neutral-800"
+                        ? "mt-2 whitespace-pre-wrap text-base leading-7 text-neutral-950 dark:text-neutral-50 sm:text-lg xl:text-xl xl:leading-8"
+                        : "whitespace-pre-wrap text-sm leading-6 text-neutral-800 dark:text-neutral-200"
                     }
                   >
-                    {currentRow?.[field] || <span className="text-neutral-400">Blank</span>}
+                    {currentRow?.[field] || <span className="text-neutral-400 dark:text-neutral-600">Blank</span>}
                   </dd>
                 </div>
               ))}
             </dl>
           </section>
 
-          <aside className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft sm:p-5">
+          <aside className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6 xl:sticky xl:top-5 xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto">
             <div className="space-y-5">
               <div>
-                <h2 className="text-lg font-semibold text-neutral-950">Coding</h2>
-                <p className="mt-1 text-sm text-neutral-600">
+                <a
+                  className="text-lg font-semibold text-neutral-950 underline decoration-teal-700/35 underline-offset-4 transition hover:text-teal-800 hover:decoration-teal-700 dark:text-neutral-50 dark:decoration-blue-500/60 dark:hover:text-blue-200 dark:hover:decoration-blue-400"
+                  href={RUBRIC_URL}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Coding
+                </a>
+                <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                   {selectedCodes.length ? selectedCodes.join(";") : "NA"}
                 </p>
               </div>
@@ -475,7 +510,7 @@ export default function CsvCoder() {
               <div className="grid gap-4">
                 {groupOrder.map((group) => (
                   <fieldset className="grid gap-2" key={group}>
-                    <legend className="mb-2 text-sm font-semibold text-neutral-800">
+                    <legend className="mb-2 text-sm font-semibold text-neutral-800 dark:text-neutral-200">
                       {codingGroupLabels[group]}
                     </legend>
                     <div className="grid gap-2">
@@ -485,7 +520,7 @@ export default function CsvCoder() {
                           const checked = selectedCodes.includes(option.code);
                           return (
                             <label
-                              className="grid cursor-pointer grid-cols-[auto_1fr] gap-3 rounded-lg border border-stone-200 bg-white px-3 py-2 transition hover:border-teal-700 hover:bg-teal-50"
+                              className="grid cursor-pointer grid-cols-[auto_1fr] gap-3 rounded-lg border border-stone-200 bg-white px-3 py-2 transition hover:border-teal-700 hover:bg-teal-50 dark:border-neutral-800 dark:bg-neutral-950 dark:hover:border-blue-500 dark:hover:bg-blue-950/30"
                               key={option.code}
                             >
                               <input
@@ -495,10 +530,10 @@ export default function CsvCoder() {
                                 type="checkbox"
                               />
                               <span className="min-w-0">
-                                <span className="mr-2 inline-flex min-w-8 justify-center rounded border border-stone-300 bg-stone-50 px-1.5 py-0.5 text-xs font-bold text-neutral-900">
+                                <span className="mr-2 inline-flex min-w-8 justify-center rounded border border-stone-300 bg-stone-50 px-1.5 py-0.5 text-xs font-bold text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
                                   {option.code}
                                 </span>
-                                <span className="text-sm leading-5 text-neutral-800">
+                                <span className="text-sm leading-5 text-neutral-800 dark:text-neutral-200">
                                   {option.label}
                                 </span>
                               </span>
@@ -511,11 +546,11 @@ export default function CsvCoder() {
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-neutral-800" htmlFor="notes">
+                <label className="text-sm font-semibold text-neutral-800 dark:text-neutral-200" htmlFor="notes">
                   Notes
                 </label>
                 <textarea
-                  className="mt-2 min-h-28 w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm leading-6 text-neutral-950 shadow-sm transition focus:border-teal-700"
+                  className="mt-2 min-h-32 w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm leading-6 text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-50"
                   id="notes"
                   onChange={(event) =>
                     updateCurrentRow(NOTES_FIELD, event.target.value.trim() ? event.target.value : "NA")
@@ -527,10 +562,10 @@ export default function CsvCoder() {
           </aside>
         </div>
 
-        <footer className="sticky bottom-0 rounded-lg border border-stone-200 bg-white/95 p-3 shadow-soft backdrop-blur sm:p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <footer className="sticky bottom-0 rounded-lg border border-stone-200 bg-white/95 p-3 shadow-soft backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 sm:p-4">
+          <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
             <button
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
               disabled={currentIndex === 0}
               onClick={goToPrevious}
               type="button"
@@ -539,13 +574,13 @@ export default function CsvCoder() {
               Previous
             </button>
 
-            <div className="text-center text-sm text-neutral-600">
+            <div className="min-w-0 break-words text-center text-sm text-neutral-600 dark:text-neutral-400 sm:truncate">
               Output: {getExportName(fileName, firstName)}
             </div>
 
             {currentIndex === rows.length - 1 ? (
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
                 onClick={exportCsv}
                 type="button"
               >
@@ -554,7 +589,7 @@ export default function CsvCoder() {
               </button>
             ) : (
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
                 onClick={goToNext}
                 type="button"
               >
