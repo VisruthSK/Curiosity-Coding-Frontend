@@ -1,7 +1,9 @@
+import { csvFormatRows, csvParseRows } from "d3-dsv";
 import type { ChangeEvent, FocusEvent, SubmitEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { codingGroupLabels, codingOptions } from "../data/codingOptions";
-import { parseCsvFile, unparseCsv, type CsvRow } from "../utils/csv";
+
+type CsvRow = Record<string, string>;
 
 type SavedSession = {
   firstName: string;
@@ -287,7 +289,16 @@ export default function CsvCoder() {
     setError("");
 
     try {
-      const { fields: parsedFields, rows: parsedRows } = await parseCsvFile(file);
+      const [header = [], ...dataRecords] = csvParseRows(await file.text());
+      const parsedFields = header.map((field) => field.trim()).filter(Boolean);
+      const parsedRows = dataRecords
+        .map((record) =>
+          parsedFields.reduce<CsvRow>((row, field, index) => {
+            row[field] = record[index] ?? "";
+            return row;
+          }, {}),
+        )
+        .filter((row) => parsedFields.some((field) => row[field].trim() !== ""));
 
       if (!parsedFields.includes(LABEL_FIELD) || !parsedFields.includes(NOTES_FIELD)) {
         setError("CSV must include Label and Notes columns.");
@@ -421,7 +432,10 @@ export default function CsvCoder() {
       nextRow[NOTES_FIELD] = isBlankOrNA(nextRow[NOTES_FIELD]) ? "NA" : nextRow[NOTES_FIELD];
       return nextRow;
     });
-    const csv = unparseCsv(exportRows, fields);
+    const csv = csvFormatRows([
+      fields,
+      ...exportRows.map((row) => fields.map((field) => row[field] ?? "")),
+    ]);
 
     writeDownload(csv, getExportName(fileName, firstName));
   }
