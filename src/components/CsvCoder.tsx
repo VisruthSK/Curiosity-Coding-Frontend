@@ -34,6 +34,12 @@ const codingOptionsByGroup = codingOptions.reduce<
   },
   { "0": [], "1": [], "2": [], "3": [] },
 );
+const primaryButtonClass =
+  "inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-950 bg-neutral-950 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-md active:translate-y-0 dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:border-blue-100 dark:hover:bg-blue-100";
+const secondaryButtonClass =
+  "inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:-translate-y-0.5 hover:border-stone-400 hover:bg-stone-50 hover:shadow-sm active:translate-y-0 dark:border-neutral-700 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800";
+const smallSecondaryButtonClass =
+  "inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:-translate-y-0.5 hover:border-stone-400 hover:bg-stone-50 hover:shadow-sm active:translate-y-0 dark:border-neutral-700 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800";
 const iconPaths = {
   checkCircle: [
     ["circle", { cx: "12", cy: "12", r: "10" }],
@@ -451,7 +457,7 @@ export default function CsvCoder() {
     return (
       <main className="flex h-dvh items-center justify-center overflow-hidden px-6 py-10">
         <div className="h-2 w-44 overflow-hidden rounded bg-neutral-200 dark:bg-neutral-800">
-          <div className="h-full w-1/2 bg-teal-700 dark:bg-blue-700" />
+          <div className="h-full w-1/2 bg-blue-700 dark:bg-blue-700" />
         </div>
       </main>
     );
@@ -477,7 +483,7 @@ export default function CsvCoder() {
             </label>
             <input
               autoFocus
-              className="mt-2 w-full rounded-lg border border-stone-300 bg-white px-3 py-3 text-base text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
+              className="mt-2 w-full rounded-lg border border-stone-300 bg-white px-3 py-3 text-base text-neutral-950 shadow-sm transition focus:border-blue-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50 dark:focus:border-blue-500"
               id="rename-coder"
               onInput={(event) =>
                 setModal({ type: "rename", value: event.currentTarget.value })
@@ -492,7 +498,7 @@ export default function CsvCoder() {
             {error ? <p className="mt-3 text-sm text-red-700 dark:text-red-400">{error}</p> : null}
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
-                className="inline-flex items-center justify-center rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                className={secondaryButtonClass}
                 onClick={() => {
                   setError("");
                   setModal(null);
@@ -502,7 +508,7 @@ export default function CsvCoder() {
                 Cancel
               </button>
               <button
-                className="inline-flex items-center justify-center rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
+                className={primaryButtonClass}
                 onClick={confirmRename}
                 type="button"
               >
@@ -522,14 +528,14 @@ export default function CsvCoder() {
             </p>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
-                className="inline-flex items-center justify-center rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                className={secondaryButtonClass}
                 onClick={() => setModal(null)}
                 type="button"
               >
                 Cancel
               </button>
               <button
-                className="inline-flex items-center justify-center rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
+                className={primaryButtonClass}
                 onClick={confirmStartOver}
                 type="button"
               >
@@ -550,7 +556,7 @@ export default function CsvCoder() {
           <div className="w-full rounded-lg border border-stone-200 bg-white p-5 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:max-w-lg sm:p-6 lg:p-8">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-teal-800 dark:text-blue-300">
+                <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
                   Curiosity Coding
                 </p>
                 <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
@@ -569,14 +575,14 @@ export default function CsvCoder() {
               <input
                 autoComplete="given-name"
                 autoFocus
-                className="w-full rounded-lg border border-stone-300 bg-white px-3 py-3 text-base text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
+                className="w-full rounded-lg border border-stone-300 bg-white px-3 py-3 text-base text-neutral-950 shadow-sm transition focus:border-blue-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50 dark:focus:border-blue-500"
                 id="first-name"
                 onInput={(event) => setNameInput(event.currentTarget.value)}
                 value={nameInput}
               />
               {error ? <p className="text-sm text-red-700 dark:text-red-400">{error}</p> : null}
               <button
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
+                className={`${primaryButtonClass} w-full`}
                 type="submit"
               >
                 Continue
@@ -599,12 +605,12 @@ export default function CsvCoder() {
           <div className="rounded-lg border border-stone-200 bg-white p-5 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-6 lg:p-8">
           <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-sm font-medium text-teal-800 dark:text-blue-300">Curiosity Coding</p>
+              <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Curiosity Coding</p>
               <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
                 Choose CSV
               </h1>
               <button
-                className="mt-2 text-sm text-neutral-600 underline decoration-stone-300 underline-offset-4 transition hover:text-teal-800 hover:decoration-teal-700 dark:text-neutral-400 dark:decoration-neutral-700 dark:hover:text-blue-200 dark:hover:decoration-blue-500"
+                className="mt-2 text-sm text-neutral-600 underline decoration-stone-300 underline-offset-4 transition hover:text-blue-700 hover:decoration-blue-600 dark:text-neutral-400 dark:decoration-neutral-700 dark:hover:text-blue-200 dark:hover:decoration-blue-500"
                 onClick={openRenameModal}
                 type="button"
               >
@@ -613,7 +619,7 @@ export default function CsvCoder() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                className={smallSecondaryButtonClass}
                 onClick={() => setModal({ type: "start-over", target: "signin" })}
                 type="button"
               >
@@ -633,10 +639,10 @@ export default function CsvCoder() {
               type="file"
             />
             <label
-              className="flex min-h-[42vh] w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 px-5 py-12 text-center transition hover:border-teal-700 hover:bg-teal-50 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-blue-500 dark:hover:bg-blue-950/30"
+              className="flex min-h-[42vh] w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 px-5 py-12 text-center transition hover:border-blue-600 hover:bg-blue-50 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-blue-500 dark:hover:bg-blue-950/30"
               htmlFor="csv-upload"
             >
-              <Icon className="mb-3 text-teal-800 dark:text-blue-300" name="upload" size={28} />
+              <Icon className="mb-3 text-blue-700 dark:text-blue-300" name="upload" size={28} />
               <span className="text-base font-semibold text-neutral-950 dark:text-neutral-50">Select CSV file</span>
             </label>
             {error ? <p className="mt-4 text-sm text-red-700 dark:text-red-400">{error}</p> : null}
@@ -658,7 +664,7 @@ export default function CsvCoder() {
         <header className="shrink-0 rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-teal-800 dark:text-blue-300">
+              <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
                 Curiosity Coding
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -680,7 +686,7 @@ export default function CsvCoder() {
               </div>
               {!isOverview ? (
                 <button
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 sm:w-auto"
+                  className={`${smallSecondaryButtonClass} sm:w-auto`}
                   onClick={() => setIsOverview(true)}
                   type="button"
                 >
@@ -689,7 +695,7 @@ export default function CsvCoder() {
                 </button>
               ) : null}
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-stone-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 sm:w-auto"
+                className={`${smallSecondaryButtonClass} sm:w-auto`}
                 onClick={() => setModal({ type: "start-over", target: "csv" })}
                 type="button"
               >
@@ -730,7 +736,7 @@ export default function CsvCoder() {
 
                   return (
                     <button
-                      className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-left transition hover:border-teal-700 hover:bg-teal-50 dark:border-neutral-800 dark:bg-neutral-800 dark:hover:border-blue-500 dark:hover:bg-blue-950/30"
+                      className="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-left transition hover:border-blue-600 hover:bg-blue-50 dark:border-neutral-800 dark:bg-neutral-800 dark:hover:border-blue-500 dark:hover:bg-blue-950/30"
                       key={`${row.Question ?? "row"}-${index}`}
                       onClick={() => openRow(index)}
                       type="button"
@@ -812,7 +818,7 @@ export default function CsvCoder() {
                 <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
                   Coding (
                   <a
-                    className="text-teal-800 underline decoration-teal-700/45 underline-offset-4 transition hover:text-teal-900 hover:decoration-teal-900 dark:text-blue-300 dark:decoration-blue-500/70 dark:hover:text-blue-200 dark:hover:decoration-blue-300"
+                    className="text-blue-700 underline decoration-blue-600/45 underline-offset-4 transition hover:text-blue-800 hover:decoration-blue-800 dark:text-blue-300 dark:decoration-blue-500/70 dark:hover:text-blue-200 dark:hover:decoration-blue-300"
                     href={RUBRIC_URL}
                     rel="noopener noreferrer"
                     target="_blank"
@@ -838,12 +844,12 @@ export default function CsvCoder() {
                           const checked = selectedCodes.includes(option.code);
                           return (
                             <label
-                              className="grid cursor-pointer grid-cols-[auto_1fr] gap-3 rounded-lg border border-stone-200 bg-white px-3 py-2 transition hover:border-teal-700 hover:bg-teal-50 dark:border-neutral-800 dark:bg-neutral-800 dark:hover:border-blue-500 dark:hover:bg-blue-950/30"
+                              className="grid cursor-pointer grid-cols-[auto_1fr] gap-3 rounded-lg border border-stone-200 bg-white px-3 py-2 transition hover:border-blue-600 hover:bg-blue-50 dark:border-neutral-800 dark:bg-neutral-800 dark:hover:border-blue-500 dark:hover:bg-blue-950/30"
                               key={option.code}
                             >
                               <input
                                 checked={checked}
-                                className="mt-1 h-4 w-4 accent-teal-700"
+                                className="mt-1 h-4 w-4 accent-blue-600 dark:accent-blue-600"
                                 onChange={() => toggleCode(option.code)}
                                 type="checkbox"
                               />
@@ -868,7 +874,7 @@ export default function CsvCoder() {
                   Notes
                 </label>
                 <textarea
-                  className="mt-2 min-h-32 w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm leading-6 text-neutral-950 shadow-sm transition focus:border-teal-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50"
+                  className="mt-2 min-h-32 w-full resize-y rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm leading-6 text-neutral-950 shadow-sm transition focus:border-blue-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-50 dark:focus:border-blue-500"
                   id="notes"
                   onFocus={keepNotesVisible}
                   onInput={(event) =>
@@ -889,7 +895,7 @@ export default function CsvCoder() {
         <footer className="shrink-0 rounded-lg border border-stone-200 bg-white/95 p-3 shadow-soft backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 sm:p-4">
           <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
             <button
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-neutral-800 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-45 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
+              className={`${secondaryButtonClass} disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:border-stone-300 disabled:hover:bg-transparent disabled:hover:shadow-none dark:disabled:hover:border-neutral-700`}
               disabled={!isOverview && currentIndex === 0}
               onClick={goToPrevious}
               type="button"
@@ -904,7 +910,7 @@ export default function CsvCoder() {
 
             {isOverview ? (
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
+                className={primaryButtonClass}
                 onClick={exportCsv}
                 type="button"
               >
@@ -913,7 +919,7 @@ export default function CsvCoder() {
               </button>
             ) : (
               <button
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-950 dark:hover:bg-white"
+                className={primaryButtonClass}
                 onClick={goToNext}
                 type="button"
               >
