@@ -1,4 +1,4 @@
-import react from "@astrojs/react";
+import preact from "@astrojs/preact";
 import { defineConfig } from "astro/config";
 
 export default defineConfig({
@@ -12,5 +12,5 @@ export default defineConfig({
       minify: "esbuild",
     },
   },
-  integrations: [react()],
+  integrations: [preact()],
 });

@@ -94,11 +94,11 @@ body {
 }
 
 .coding-progress::-webkit-progress-value {
-  background: #0f766e;
+  background: #1d4ed8;
 }
 
 .coding-progress::-moz-progress-bar {
-  background: #0f766e;
+  background: #1d4ed8;
 }
 
 :root.dark .coding-progress,
@@ -124,7 +124,7 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 label:focus-visible {
-  outline: 3px solid rgba(20, 126, 116, 0.32);
+  outline: 3px solid rgba(37, 99, 235, 0.32);
   outline-offset: 2px;
 }
 
