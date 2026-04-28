@@ -134,6 +134,7 @@ export default function CsvCoder() {
   const [saveStatus, setSaveStatus] = useState("Not saved");
   const [modal, setModal] = useState<ModalState>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const questionSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const saved = readSavedSession();
@@ -259,14 +260,26 @@ export default function CsvCoder() {
     updateCurrentRow(LABEL_FIELD, sortedCodes.length ? sortedCodes.join(";") : "NA");
   }
 
+  function scrollToQuestionOnMobile() {
+    if (!window.matchMedia("(max-width: 767px)").matches) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      questionSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }
+
   function goToPrevious() {
     if (isOverview) {
       setCurrentIndex(rows.length - 1);
       setIsOverview(false);
+      scrollToQuestionOnMobile();
       return;
     }
 
     setCurrentIndex((index) => Math.max(index - 1, 0));
+    scrollToQuestionOnMobile();
   }
 
   function goToNext() {
@@ -276,6 +289,7 @@ export default function CsvCoder() {
     }
 
     setCurrentIndex((index) => Math.min(index + 1, rows.length - 1));
+    scrollToQuestionOnMobile();
   }
 
   function openRow(index: number) {
@@ -578,10 +592,10 @@ export default function CsvCoder() {
             </section>
           ) : (
             <>
-          <section className={`${styles.card} p-4 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto`}>
+          <section className={`${styles.card} p-4 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto`} ref={questionSectionRef}>
             <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
               <Icon name="fileText" />
-              Current row
+              I Wonder Question
             </div>
 
             <dl className="grid gap-3 lg:gap-4">
