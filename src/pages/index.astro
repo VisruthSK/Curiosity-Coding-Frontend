@@ -1,6 +1,5 @@
 ---
 import CsvCoder from "../components/CsvCoder";
-import ThemeToggle from "../components/ThemeToggle";
 import "../styles/global.css";
 ---
 
@@ -16,7 +15,29 @@ import "../styles/global.css";
     <title>Curiosity Coding</title>
   </head>
   <body>
-    <ThemeToggle client:load />
+    <button
+      aria-label="Switch color theme"
+      aria-pressed="false"
+      class="theme-toggle"
+      data-theme-toggle
+      title="Theme"
+      type="button"
+    >
+      <svg aria-hidden="true" data-theme-icon="dark" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
+        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+      </svg>
+      <svg aria-hidden="true" class="hidden" data-theme-icon="light" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v2"></path>
+        <path d="M12 20v2"></path>
+        <path d="m4.93 4.93 1.41 1.41"></path>
+        <path d="m17.66 17.66 1.41 1.41"></path>
+        <path d="M2 12h2"></path>
+        <path d="M20 12h2"></path>
+        <path d="m6.34 17.66-1.41 1.41"></path>
+        <path d="m19.07 4.93-1.41 1.41"></path>
+      </svg>
+    </button>
     <CsvCoder client:load />
   </body>
 </html>

@@ -1,15 +1,5 @@
-import {
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Circle,
-  Download,
-  FileText,
-  ListChecks,
-  RotateCcw,
-  Upload,
-} from "lucide-react";
 import Papa from "papaparse";
+import type { ParseResult } from "papaparse";
 import type { ChangeEvent, FocusEvent, SubmitEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { codingGroupLabels, codingOptions } from "../data/codingOptions";
@@ -37,6 +27,68 @@ const RUBRIC_URL =
   "https://www.dropbox.com/scl/fi/hk484lt52g8u4j87q8wcg/RubricApril2026.xlsx";
 
 const groupOrder = ["0", "1", "2", "3"] as const;
+const iconPaths = {
+  checkCircle: [
+    ["circle", { cx: "12", cy: "12", r: "10" }],
+    ["path", { d: "m9 12 2 2 4-4" }],
+  ],
+  chevronLeft: [["path", { d: "m15 18-6-6 6-6" }]],
+  chevronRight: [["path", { d: "m9 18 6-6-6-6" }]],
+  circle: [["circle", { cx: "12", cy: "12", r: "10" }]],
+  download: [
+    ["path", { d: "M12 15V3" }],
+    ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }],
+    ["path", { d: "m7 10 5 5 5-5" }],
+  ],
+  fileText: [
+    ["path", { d: "M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" }],
+    ["path", { d: "M14 2v5a1 1 0 0 0 1 1h5" }],
+    ["path", { d: "M10 9H8" }],
+    ["path", { d: "M16 13H8" }],
+    ["path", { d: "M16 17H8" }],
+  ],
+  listChecks: [
+    ["path", { d: "M13 5h8" }],
+    ["path", { d: "M13 12h8" }],
+    ["path", { d: "M13 19h8" }],
+    ["path", { d: "m3 17 2 2 4-4" }],
+    ["path", { d: "m3 7 2 2 4-4" }],
+  ],
+  rotateCcw: [
+    ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" }],
+    ["path", { d: "M3 3v5h5" }],
+  ],
+  upload: [
+    ["path", { d: "M12 3v12" }],
+    ["path", { d: "m17 8-5-5-5 5" }],
+    ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }],
+  ],
+} as const;
+
+type IconName = keyof typeof iconPaths;
+
+function Icon({ className, name, size = 18 }: { className?: string; name: IconName; size?: number }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      height={size}
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      viewBox="0 0 24 24"
+      width={size}
+    >
+      {iconPaths[name].map(([tagName, attributes], index) => {
+        const Element = tagName;
+
+        return <Element key={`${name}-${index}`} {...attributes} />;
+      })}
+    </svg>
+  );
+}
 
 function isBlankOrNA(value: unknown) {
   return String(value ?? "").trim().toLowerCase() === "na" || String(value ?? "").trim() === "";
@@ -220,7 +272,7 @@ export default function CsvCoder() {
       header: true,
       skipEmptyLines: "greedy",
       dynamicTyping: false,
-      complete: (results) => {
+      complete: (results: ParseResult<CsvRow>) => {
         const parsedFields = results.meta.fields?.filter(Boolean) ?? [];
 
         if (!parsedFields.includes(LABEL_FIELD) || !parsedFields.includes(NOTES_FIELD)) {
@@ -243,7 +295,7 @@ export default function CsvCoder() {
         setCurrentIndex(0);
         setIsOverview(false);
       },
-      error: (parseError) => {
+      error: (parseError: Error) => {
         setError(parseError.message);
       },
     });
@@ -508,7 +560,7 @@ export default function CsvCoder() {
                 type="submit"
               >
                 Continue
-                <ChevronRight aria-hidden="true" size={18} />
+                <Icon name="chevronRight" />
               </button>
             </form>
           </div>
@@ -545,7 +597,7 @@ export default function CsvCoder() {
                 onClick={() => setModal({ type: "start-over", target: "signin" })}
                 type="button"
               >
-                <RotateCcw aria-hidden="true" size={16} />
+                <Icon name="rotateCcw" size={16} />
                 Start over
               </button>
             </div>
@@ -564,7 +616,7 @@ export default function CsvCoder() {
               className="flex min-h-[42vh] w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 px-5 py-12 text-center transition hover:border-teal-700 hover:bg-teal-50 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-blue-500 dark:hover:bg-blue-950/30"
               htmlFor="csv-upload"
             >
-              <Upload aria-hidden="true" className="mb-3 text-teal-800 dark:text-blue-300" size={28} />
+              <Icon className="mb-3 text-teal-800 dark:text-blue-300" name="upload" size={28} />
               <span className="text-base font-semibold text-neutral-950 dark:text-neutral-50">Select CSV file</span>
             </label>
             {error ? <p className="mt-4 text-sm text-red-700 dark:text-red-400">{error}</p> : null}
@@ -612,7 +664,7 @@ export default function CsvCoder() {
                   onClick={() => setIsOverview(true)}
                   type="button"
                 >
-                  <ListChecks aria-hidden="true" size={16} />
+                  <Icon name="listChecks" size={16} />
                   Review
                 </button>
               ) : null}
@@ -621,7 +673,7 @@ export default function CsvCoder() {
                 onClick={() => setModal({ type: "start-over", target: "csv" })}
                 type="button"
               >
-                <RotateCcw aria-hidden="true" size={16} />
+                <Icon name="rotateCcw" size={16} />
                 Start over
               </button>
             </div>
@@ -647,7 +699,7 @@ export default function CsvCoder() {
           {isOverview ? (
             <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6 xl:col-span-2 xl:min-h-0 xl:overflow-y-auto">
               <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                <ListChecks aria-hidden="true" size={18} />
+                <Icon name="listChecks" />
                 Overview
               </div>
 
@@ -675,9 +727,9 @@ export default function CsvCoder() {
                           }
                         >
                           {hasCoding ? (
-                            <CheckCircle2 aria-hidden="true" size={14} />
+                            <Icon name="checkCircle" size={14} />
                           ) : (
-                            <Circle aria-hidden="true" size={14} />
+                            <Icon name="circle" size={14} />
                           )}
                           {hasCoding ? "Coding" : "No coding"}
                         </span>
@@ -689,9 +741,9 @@ export default function CsvCoder() {
                           }
                         >
                           {hasNotes ? (
-                            <CheckCircle2 aria-hidden="true" size={14} />
+                            <Icon name="checkCircle" size={14} />
                           ) : (
-                            <Circle aria-hidden="true" size={14} />
+                            <Icon name="circle" size={14} />
                           )}
                           {hasNotes ? "Note" : "No note"}
                         </span>
@@ -705,7 +757,7 @@ export default function CsvCoder() {
             <>
           <section className="rounded-lg border border-stone-200 bg-white p-4 shadow-soft dark:border-neutral-800 dark:bg-neutral-900 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto">
             <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-              <FileText aria-hidden="true" size={18} />
+              <Icon name="fileText" />
               Current row
             </div>
 
@@ -820,7 +872,7 @@ export default function CsvCoder() {
               onClick={goToPrevious}
               type="button"
             >
-              <ChevronLeft aria-hidden="true" size={18} />
+              <Icon name="chevronLeft" />
               Previous
             </button>
 
@@ -834,7 +886,7 @@ export default function CsvCoder() {
                 onClick={exportCsv}
                 type="button"
               >
-                <Download aria-hidden="true" size={18} />
+                <Icon name="download" />
                 Export CSV
               </button>
             ) : (
@@ -844,7 +896,7 @@ export default function CsvCoder() {
                 type="button"
               >
                 Next
-                <ChevronRight aria-hidden="true" size={18} />
+                <Icon name="chevronRight" />
               </button>
             )}
           </div>
