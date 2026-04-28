@@ -1,1 +1,2 @@
-# Keep all static assets.
+_worker.js
+_routes.json

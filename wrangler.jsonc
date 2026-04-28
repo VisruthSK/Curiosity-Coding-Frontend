@@ -1,7 +1,13 @@
 {
-  "name": "curiosity-coding",
-  "compatibility_date": "2026-04-28",
-  "assets": {
-    "directory": "./dist"
-  }
+	"compatibility_date": "2026-04-28",
+	"compatibility_flags": ["global_fetch_strictly_public"],
+	"name": "curiosity-coding-frontend",
+	"main": "@astrojs/cloudflare/entrypoints/server",
+	"assets": {
+		"directory": "./dist",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true
+	}
 }
