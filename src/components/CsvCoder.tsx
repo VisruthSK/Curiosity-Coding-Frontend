@@ -8,10 +8,13 @@ import { codingGroupLabels, codingOptions } from "../data/codingOptions";
 const STORAGE_KEY = "curiosity-coding-tool:v1";
 const LABEL_FIELD = "Label";
 const NOTES_FIELD = "Notes";
+const FLAG_FIELD = "Flag";
 const RUBRIC_URL =
   "https://www.dropbox.com/scl/fi/hk484lt52g8u4j87q8wcg/RubricApril2026.xlsx";
+const INSTRUCTOR_DIARY_URL =
+  "https://docs.google.com/spreadsheets/d/1OfLVEqSGIwWYakWB9QCMS1p0nSKU-8QfsL0Gb_YuN38/edit?usp=sharing";
 
-const groupOrder = ["0", "1", "2", "3"] as const;
+const groupOrder = ["1", "2", "3", "0"] as const;
 const codingOptionsByGroup = codingOptions.reduce<
   Record<(typeof groupOrder)[number], typeof codingOptions>
 >(
@@ -63,6 +66,21 @@ function normalizeRow(row: CsvRow, fields: string[]) {
   }, {});
 }
 
+function ensureFlagField(fields: string[]) {
+  return fields.includes(FLAG_FIELD) ? fields : [...fields, FLAG_FIELD];
+}
+
+function randomizeRows(rowsToRandomize: CsvRow[]) {
+  const nextRows = [...rowsToRandomize];
+
+  for (let index = nextRows.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [nextRows[index], nextRows[randomIndex]] = [nextRows[randomIndex], nextRows[index]];
+  }
+
+  return nextRows;
+}
+
 function isCsvRow(value: unknown): value is CsvRow {
   return (
     value !== null &&
@@ -91,11 +109,13 @@ function readSavedSession(): SavedSession | null {
       return null;
     }
 
+    const fields = ensureFlagField(parsed.fields);
+
     return {
       firstName: formatName(parsed.firstName),
       fileName: parsed.fileName,
-      fields: parsed.fields,
-      rows: parsed.rows,
+      fields,
+      rows: parsed.rows.map((row) => normalizeRow(row, fields)),
       currentIndex:
         typeof parsed.currentIndex === "number" && Number.isFinite(parsed.currentIndex)
           ? parsed.currentIndex
@@ -134,6 +154,7 @@ export default function CsvCoder() {
   const [saveStatus, setSaveStatus] = useState("Not saved");
   const [modal, setModal] = useState<ModalState>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const questionSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const saved = readSavedSession();
@@ -183,6 +204,7 @@ export default function CsvCoder() {
 
   const currentRow = rows[currentIndex];
   const selectedCodes = useMemo(() => parseLabelValue(currentRow?.[LABEL_FIELD]), [currentRow]);
+  const isCurrentRowFlagged = String(currentRow?.[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE";
   const codedCount = useMemo(
     () => rows.filter((row) => !isBlankOrNA(row[LABEL_FIELD])).length,
     [rows],
@@ -225,9 +247,11 @@ export default function CsvCoder() {
         return;
       }
 
+      const nextFields = ensureFlagField(parsedFields);
+
       setFileName(file.name);
-      setFields(parsedFields);
-      setRows(parsedRows.map((row) => normalizeRow(row, parsedFields)));
+      setFields(nextFields);
+      setRows(randomizeRows(parsedRows.map((row) => normalizeRow(row, nextFields))));
       setCurrentIndex(0);
       setIsOverview(false);
     } catch (parseError) {
@@ -259,14 +283,30 @@ export default function CsvCoder() {
     updateCurrentRow(LABEL_FIELD, sortedCodes.length ? sortedCodes.join(";") : "NA");
   }
 
+  function toggleCurrentRowFlag() {
+    updateCurrentRow(FLAG_FIELD, isCurrentRowFlagged ? "NA" : "TRUE");
+  }
+
+  function scrollToQuestionOnMobile() {
+    if (!window.matchMedia("(max-width: 767px)").matches) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      questionSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }
+
   function goToPrevious() {
     if (isOverview) {
       setCurrentIndex(rows.length - 1);
       setIsOverview(false);
+      scrollToQuestionOnMobile();
       return;
     }
 
     setCurrentIndex((index) => Math.max(index - 1, 0));
+    scrollToQuestionOnMobile();
   }
 
   function goToNext() {
@@ -276,6 +316,7 @@ export default function CsvCoder() {
     }
 
     setCurrentIndex((index) => Math.min(index + 1, rows.length - 1));
+    scrollToQuestionOnMobile();
   }
 
   function openRow(index: number) {
@@ -345,6 +386,7 @@ export default function CsvCoder() {
       const nextRow = normalizeRow(row, fields);
       nextRow[LABEL_FIELD] = isBlankOrNA(nextRow[LABEL_FIELD]) ? "NA" : nextRow[LABEL_FIELD];
       nextRow[NOTES_FIELD] = isBlankOrNA(nextRow[NOTES_FIELD]) ? "NA" : nextRow[NOTES_FIELD];
+      nextRow[FLAG_FIELD] = isBlankOrNA(nextRow[FLAG_FIELD]) ? "NA" : nextRow[FLAG_FIELD];
       return nextRow;
     });
     const csv = formatCsv(exportRows, fields);
@@ -480,23 +522,28 @@ export default function CsvCoder() {
     );
   }
 
-  const detailFields = fields.filter((field) => field !== LABEL_FIELD && field !== NOTES_FIELD);
+  const detailFields = fields.filter(
+    (field) => field !== LABEL_FIELD && field !== NOTES_FIELD && field !== FLAG_FIELD,
+  );
 
   return (
     <>
-    <main className="min-h-dvh overflow-y-auto px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-5 lg:px-6 xl:h-dvh xl:overflow-hidden xl:px-8">
-      <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-4 sm:gap-5 xl:h-full xl:min-h-0">
-        <header className={`${styles.card} shrink-0 p-4 sm:p-5 lg:p-6`}>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <main className="min-h-dvh overflow-y-auto px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:h-dvh xl:overflow-hidden xl:px-8">
+      <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-3 sm:gap-4 xl:h-full xl:min-h-0">
+        <header className={`${styles.card} shrink-0 p-3 sm:p-4`}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <BrandLabel />
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <h1 className="max-w-full truncate text-2xl font-semibold text-neutral-950 dark:text-neutral-50">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <h1 className="max-w-full truncate text-xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-2xl">
                   {fileName}
                 </h1>
-                <span className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 dark:border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-200">
+                <button
+                  className="inline-flex h-5 items-center rounded border border-amber-300 bg-amber-50 px-2 text-xs font-medium leading-none text-amber-900 transition hover:border-amber-400 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:border-amber-400/50 dark:hover:bg-amber-400/20"
+                  onClick={openRenameModal}
+                  type="button"
+                >
                   {firstName}
-                </span>
+                </button>
               </div>
             </div>
 
@@ -528,7 +575,7 @@ export default function CsvCoder() {
             </div>
           </div>
 
-          <div className="mt-5">
+          <div className="mt-3">
             <div className="mb-2 flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-400">
               <span>
                 {isOverview ? "Overview" : `Question ${rowNumber} of ${rows.length}`}
@@ -556,15 +603,26 @@ export default function CsvCoder() {
                 {rows.map((row, index) => {
                   const hasCoding = !isBlankOrNA(row[LABEL_FIELD]);
                   const hasNotes = !isBlankOrNA(row[NOTES_FIELD]);
+                  const isFlagged = String(row[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE";
 
                   return (
                     <button
-                      className={`grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-left dark:border-neutral-800 dark:bg-neutral-800 ${styles.interactiveSurface}`}
+                      className={
+                        isFlagged
+                          ? "grid gap-3 rounded-lg border border-amber-500 bg-amber-200 p-3 text-left text-amber-950 transition hover:border-amber-600 hover:bg-amber-300 dark:border-amber-300 dark:bg-amber-500/30 dark:text-amber-50 dark:hover:border-amber-200 dark:hover:bg-amber-500/40"
+                          : `grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-left dark:border-neutral-800 dark:bg-neutral-800 ${styles.interactiveSurface}`
+                      }
                       key={`${row.Question ?? "row"}-${index}`}
                       onClick={() => openRow(index)}
                       type="button"
                     >
-                      <span className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">
+                      <span
+                        className={
+                          isFlagged
+                            ? "text-sm font-semibold text-amber-950 dark:text-amber-50"
+                            : "text-sm font-semibold text-neutral-950 dark:text-neutral-50"
+                        }
+                      >
                         Question {index + 1}
                       </span>
                       <span className="flex flex-wrap gap-2">
@@ -578,10 +636,55 @@ export default function CsvCoder() {
             </section>
           ) : (
             <>
-          <section className={`${styles.card} p-4 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto`}>
-            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-              <Icon name="fileText" />
-              Current row
+          <section className={`${styles.card} p-4 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto`} ref={questionSectionRef}>
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                  <Icon name="fileText" />
+                  I Wonder Question
+                  </span>
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                    Coding preview:{" "}
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                      {selectedCodes.length ? selectedCodes.join(";") : "NA"}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 md:ml-auto md:flex-nowrap md:justify-end">
+                  <a
+                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                    href={RUBRIC_URL}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    Rubric
+                    <Icon name="externalLink" size={15} />
+                  </a>
+                  <a
+                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                    href={INSTRUCTOR_DIARY_URL}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    Instructor diary
+                    <Icon name="externalLink" size={15} />
+                  </a>
+                <Button
+                  aria-pressed={isCurrentRowFlagged}
+                  className={
+                    `md:ml-auto ${isCurrentRowFlagged
+                      ? "border-amber-500 bg-amber-200 text-amber-950 hover:border-amber-600 hover:bg-amber-300 dark:border-amber-300 dark:bg-amber-500/30 dark:text-amber-50 dark:hover:border-amber-200 dark:hover:bg-amber-500/40"
+                      : ""}`
+                  }
+                  onClick={toggleCurrentRowFlag}
+                  variant="secondarySmall"
+                >
+                  <Icon name="flag" size={16} />
+                  {isCurrentRowFlagged ? "Flagged" : "Flag question"}
+                </Button>
+              </div>
             </div>
 
             <dl className="grid gap-3 lg:gap-4">
@@ -609,26 +712,8 @@ export default function CsvCoder() {
             </dl>
           </section>
 
-          <aside className={`${styles.card} p-4 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto`}>
-            <div className="space-y-5">
-              <div>
-                <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
-                  Coding (
-                  <a
-                    className={styles.link}
-                    href={RUBRIC_URL}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    Rubric
-                  </a>
-                  )
-                </h2>
-                <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                  {selectedCodes.length ? selectedCodes.join(";") : "NA"}
-                </p>
-              </div>
-
+          <aside className={`${styles.card} p-3 sm:p-4 lg:p-5 xl:min-h-0 xl:overflow-y-auto`}>
+            <div className="space-y-4">
               <div className="grid gap-4">
                 {groupOrder.map((group) => (
                   <fieldset className="grid gap-2" key={group}>
@@ -688,32 +773,30 @@ export default function CsvCoder() {
         </div>
 
         <footer className="shrink-0 rounded-lg border border-stone-200 bg-white/95 p-3 shadow-soft backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 sm:p-4">
-          <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-            <Button
-              className="disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:border-stone-300 disabled:hover:bg-transparent disabled:hover:shadow-none dark:disabled:hover:border-neutral-700"
-              disabled={!isOverview && currentIndex === 0}
-              onClick={goToPrevious}
-            >
-              <Icon name="chevronLeft" />
-              Previous
-            </Button>
-
-            <div className="min-w-0 break-words text-center text-sm text-neutral-600 dark:text-neutral-400 sm:truncate">
-              Output: {getExportName(fileName, firstName)}
-            </div>
-
-            {isOverview ? (
+          {isOverview ? (
+            <div className="flex justify-center">
               <Button onClick={exportCsv} variant="primary">
                 <Icon name="download" />
                 Export CSV
               </Button>
-            ) : (
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+              <Button
+                className="disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:border-stone-300 disabled:hover:bg-transparent disabled:hover:shadow-none dark:disabled:hover:border-neutral-700"
+                disabled={currentIndex === 0}
+                onClick={goToPrevious}
+              >
+                <Icon name="chevronLeft" />
+                Previous
+              </Button>
+              <div aria-hidden="true" />
               <Button onClick={goToNext} variant="primary">
                 Next
                 <Icon name="chevronRight" />
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </footer>
       </div>
     </main>
