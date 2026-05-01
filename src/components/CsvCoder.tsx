@@ -538,7 +538,7 @@ export default function CsvCoder() {
                   {fileName}
                 </h1>
                 <button
-                  className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[900px] font-medium leading-5 text-amber-900 transition hover:border-amber-400 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:border-amber-400/50 dark:hover:bg-amber-400/20"
+                  className="inline-flex h-5 items-center rounded border border-amber-300 bg-amber-50 px-2 text-[15px] font-medium leading-none text-amber-900 transition hover:border-amber-400 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:border-amber-400/50 dark:hover:bg-amber-400/20"
                   onClick={openRenameModal}
                   type="button"
                 >
