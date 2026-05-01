@@ -537,9 +537,13 @@ export default function CsvCoder() {
                 <h1 className="max-w-full truncate text-xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-2xl">
                   {fileName}
                 </h1>
-                <span className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 dark:border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-200">
+                <button
+                  className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[900px] font-medium leading-5 text-amber-900 transition hover:border-amber-400 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:border-amber-400/50 dark:hover:bg-amber-400/20"
+                  onClick={openRenameModal}
+                  type="button"
+                >
                   {firstName}
-                </span>
+                </button>
               </div>
             </div>
 
@@ -769,32 +773,30 @@ export default function CsvCoder() {
         </div>
 
         <footer className="shrink-0 rounded-lg border border-stone-200 bg-white/95 p-3 shadow-soft backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 sm:p-4">
-          <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-            <Button
-              className="disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:border-stone-300 disabled:hover:bg-transparent disabled:hover:shadow-none dark:disabled:hover:border-neutral-700"
-              disabled={!isOverview && currentIndex === 0}
-              onClick={goToPrevious}
-            >
-              <Icon name="chevronLeft" />
-              Previous
-            </Button>
-
-            <div className="min-w-0 break-words text-center text-sm text-neutral-600 dark:text-neutral-400 sm:truncate">
-              Output: {getExportName(fileName, firstName)}
-            </div>
-
-            {isOverview ? (
+          {isOverview ? (
+            <div className="flex justify-center">
               <Button onClick={exportCsv} variant="primary">
                 <Icon name="download" />
                 Export CSV
               </Button>
-            ) : (
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+              <Button
+                className="disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:border-stone-300 disabled:hover:bg-transparent disabled:hover:shadow-none dark:disabled:hover:border-neutral-700"
+                disabled={currentIndex === 0}
+                onClick={goToPrevious}
+              >
+                <Icon name="chevronLeft" />
+                Previous
+              </Button>
+              <div aria-hidden="true" />
               <Button onClick={goToNext} variant="primary">
                 Next
                 <Icon name="chevronRight" />
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </footer>
       </div>
     </main>

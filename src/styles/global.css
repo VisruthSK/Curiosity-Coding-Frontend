@@ -78,6 +78,10 @@ body {
   background: #262626;
 }
 
+astro-dev-toolbar {
+  display: none !important;
+}
+
 .coding-progress {
   appearance: none;
   background: #e7e5e4;
