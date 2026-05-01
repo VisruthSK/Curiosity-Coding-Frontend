@@ -54,7 +54,10 @@ test("codes rows, reviews completion, and exports with title-cased name", async 
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByLabel("First name").fill("  ana  ");
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByRole("button", { name: "Ana" })).toBeVisible();
+  const namePill = page.getByRole("button", { name: "Ana" });
+  await expect(namePill).toBeVisible();
+  await expect(namePill).toHaveCSS("font-size", "12px");
+  await expect(namePill).toHaveCSS("height", "20px");
 
   await expect(page.getByRole("link", { name: "Rubric" })).toHaveAttribute("href", rubricUrl);
   await expect(page.getByRole("link", { name: "Instructor diary" })).toHaveAttribute(
@@ -182,6 +185,30 @@ test("randomizes loaded rows and keeps no-question coding last", async ({ page }
     "Example context",
     "No question",
   ]);
+});
+
+test("mobile coding layout keeps controls visible without horizontal overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  const csvPath = createCsvFile("mobile check.csv", [
+    '2026-04-01,"How should this look on a narrow phone screen with a longer question?",Mobile coding,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("mia");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+
+  await expect(page.getByRole("button", { name: "Mia" })).toHaveCSS("height", "20px");
+  await expect(page.getByRole("link", { name: "Rubric" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Instructor diary" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Flag question" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Previous" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Next" })).toBeVisible();
+
+  const hasHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth,
+  );
+  expect(hasHorizontalOverflow).toBe(false);
 });
 
 test("renames coder and uses in-app start-over dialog", async ({ page }) => {
