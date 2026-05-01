@@ -528,14 +528,13 @@ export default function CsvCoder() {
 
   return (
     <>
-    <main className="min-h-dvh overflow-y-auto px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-5 lg:px-6 xl:h-dvh xl:overflow-hidden xl:px-8">
-      <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-4 sm:gap-5 xl:h-full xl:min-h-0">
-        <header className={`${styles.card} shrink-0 p-4 sm:p-5 lg:p-6`}>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <main className="min-h-dvh overflow-y-auto px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:h-dvh xl:overflow-hidden xl:px-8">
+      <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-3 sm:gap-4 xl:h-full xl:min-h-0">
+        <header className={`${styles.card} shrink-0 p-3 sm:p-4`}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <BrandLabel />
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <h1 className="max-w-full truncate text-2xl font-semibold text-neutral-950 dark:text-neutral-50">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <h1 className="max-w-full truncate text-xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-2xl">
                   {fileName}
                 </h1>
                 <span className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 dark:border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-200">
@@ -572,7 +571,7 @@ export default function CsvCoder() {
             </div>
           </div>
 
-          <div className="mt-5">
+          <div className="mt-3">
             <div className="mb-2 flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-400">
               <span>
                 {isOverview ? "Overview" : `Question ${rowNumber} of ${rows.length}`}
@@ -625,9 +624,54 @@ export default function CsvCoder() {
           ) : (
             <>
           <section className={`${styles.card} p-4 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto`} ref={questionSectionRef}>
-            <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-              <Icon name="fileText" />
-              I Wonder Question
+            <div className="mb-4 flex flex-col gap-3 border-b border-stone-100 pb-4 dark:border-neutral-800 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+                  <Icon name="fileText" />
+                  I Wonder Question
+                  </span>
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                    Coding preview:{" "}
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                      {selectedCodes.length ? selectedCodes.join(";") : "NA"}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 md:ml-auto md:flex-nowrap md:justify-end">
+                  <a
+                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                    href={RUBRIC_URL}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    Rubric
+                    <Icon name="externalLink" size={15} />
+                  </a>
+                  <a
+                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                    href={INSTRUCTOR_DIARY_URL}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    Instructor diary
+                    <Icon name="externalLink" size={15} />
+                  </a>
+                <Button
+                  aria-pressed={isCurrentRowFlagged}
+                  className={
+                    `md:ml-auto ${isCurrentRowFlagged
+                      ? "border-amber-500 bg-amber-50 text-amber-950 hover:border-amber-600 hover:bg-amber-100 dark:border-amber-400 dark:bg-amber-400/10 dark:text-amber-100 dark:hover:border-amber-300 dark:hover:bg-amber-400/20"
+                      : ""}`
+                  }
+                  onClick={toggleCurrentRowFlag}
+                  variant="secondarySmall"
+                >
+                  <Icon name="flag" size={16} />
+                  {isCurrentRowFlagged ? "Flagged" : "Flag question"}
+                </Button>
+              </div>
             </div>
 
             <dl className="grid gap-3 lg:gap-4">
@@ -650,56 +694,13 @@ export default function CsvCoder() {
                   >
                     {currentRow?.[field] || <span className="text-neutral-400 dark:text-neutral-600">Blank</span>}
                   </dd>
-                  {field === "Student Coding" ? (
-                    <a
-                      className={`${styles.link} mt-2 inline-flex text-sm`}
-                      href={INSTRUCTOR_DIARY_URL}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      Instructor diary
-                    </a>
-                  ) : null}
                 </div>
               ))}
             </dl>
           </section>
 
-          <aside className={`${styles.card} p-4 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto`}>
-            <div className="space-y-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
-                    Coding (
-                    <a
-                      className={styles.link}
-                      href={RUBRIC_URL}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      Rubric
-                    </a>
-                    )
-                  </h2>
-                  <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                    {selectedCodes.length ? selectedCodes.join(";") : "NA"}
-                  </p>
-                </div>
-                <Button
-                  aria-pressed={isCurrentRowFlagged}
-                  className={
-                    isCurrentRowFlagged
-                      ? "border-amber-500 bg-amber-50 text-amber-950 hover:border-amber-600 hover:bg-amber-100 dark:border-amber-400 dark:bg-amber-400/10 dark:text-amber-100 dark:hover:border-amber-300 dark:hover:bg-amber-400/20"
-                      : ""
-                  }
-                  onClick={toggleCurrentRowFlag}
-                  variant="secondarySmall"
-                >
-                  <Icon name="flag" size={16} />
-                  {isCurrentRowFlagged ? "Flagged" : "Flag question"}
-                </Button>
-              </div>
-
+          <aside className={`${styles.card} p-3 sm:p-4 lg:p-5 xl:min-h-0 xl:overflow-y-auto`}>
+            <div className="space-y-4">
               <div className="grid gap-4">
                 {groupOrder.map((group) => (
                   <fieldset className="grid gap-2" key={group}>
