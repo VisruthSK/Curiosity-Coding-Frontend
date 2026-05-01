@@ -59,7 +59,6 @@ test("codes rows, reviews completion, and exports with title-cased name", async 
   await expect(firstQuestion).toBeVisible();
   await expect(firstQuestion).toContainText("Coding");
   await expect(firstQuestion).toContainText("Note");
-  await expect(firstQuestion).toContainText("Flagged");
   await expect(secondQuestion).toContainText("Coding");
   await expect(secondQuestion).toContainText("No note");
 

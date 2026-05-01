@@ -603,18 +603,27 @@ export default function CsvCoder() {
 
                   return (
                     <button
-                      className={`grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-left dark:border-neutral-800 dark:bg-neutral-800 ${styles.interactiveSurface}`}
+                      className={
+                        isFlagged
+                          ? "grid gap-3 rounded-lg border border-amber-500 bg-amber-200 p-3 text-left text-amber-950 transition hover:border-amber-600 hover:bg-amber-300 dark:border-amber-300 dark:bg-amber-500/30 dark:text-amber-50 dark:hover:border-amber-200 dark:hover:bg-amber-500/40"
+                          : `grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-left dark:border-neutral-800 dark:bg-neutral-800 ${styles.interactiveSurface}`
+                      }
                       key={`${row.Question ?? "row"}-${index}`}
                       onClick={() => openRow(index)}
                       type="button"
                     >
-                      <span className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">
+                      <span
+                        className={
+                          isFlagged
+                            ? "text-sm font-semibold text-amber-950 dark:text-amber-50"
+                            : "text-sm font-semibold text-neutral-950 dark:text-neutral-50"
+                        }
+                      >
                         Question {index + 1}
                       </span>
                       <span className="flex flex-wrap gap-2">
                         <StatusPill active={hasCoding} activeText="Coding" inactiveText="No coding" />
                         <StatusPill active={hasNotes} activeText="Note" inactiveText="No note" />
-                        <StatusPill active={isFlagged} activeText="Flagged" inactiveText="No flag" />
                       </span>
                     </button>
                   );
@@ -624,7 +633,7 @@ export default function CsvCoder() {
           ) : (
             <>
           <section className={`${styles.card} p-4 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto`} ref={questionSectionRef}>
-            <div className="mb-4 flex flex-col gap-3 border-b border-stone-100 pb-4 dark:border-neutral-800 md:flex-row md:items-center md:justify-between">
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
@@ -641,7 +650,7 @@ export default function CsvCoder() {
               </div>
               <div className="flex flex-wrap gap-2 md:ml-auto md:flex-nowrap md:justify-end">
                   <a
-                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
                     href={RUBRIC_URL}
                     rel="noopener noreferrer"
                     target="_blank"
@@ -650,7 +659,7 @@ export default function CsvCoder() {
                     <Icon name="externalLink" size={15} />
                   </a>
                   <a
-                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
                     href={INSTRUCTOR_DIARY_URL}
                     rel="noopener noreferrer"
                     target="_blank"
@@ -662,7 +671,7 @@ export default function CsvCoder() {
                   aria-pressed={isCurrentRowFlagged}
                   className={
                     `md:ml-auto ${isCurrentRowFlagged
-                      ? "border-amber-500 bg-amber-50 text-amber-950 hover:border-amber-600 hover:bg-amber-100 dark:border-amber-400 dark:bg-amber-400/10 dark:text-amber-100 dark:hover:border-amber-300 dark:hover:bg-amber-400/20"
+                      ? "border-amber-500 bg-amber-200 text-amber-950 hover:border-amber-600 hover:bg-amber-300 dark:border-amber-300 dark:bg-amber-500/30 dark:text-amber-50 dark:hover:border-amber-200 dark:hover:bg-amber-500/40"
                       : ""}`
                   }
                   onClick={toggleCurrentRowFlag}
