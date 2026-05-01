@@ -21,7 +21,13 @@ function createCsvFixture(name: string, csv: string) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => window.localStorage.clear());
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+    Object.defineProperty(Math, "random", {
+      configurable: true,
+      value: () => 0.99,
+    });
+  });
   await page.goto("/");
 });
 
@@ -39,6 +45,7 @@ test("codes rows, reviews completion, and exports with title-cased name", async 
 
   await page.getByLabel("Select CSV file").setInputFiles(csvPath);
   await expect(page.getByRole("heading", { name: "sample survey.csv" })).toBeVisible();
+  await page.getByRole("button", { name: "Flag question" }).click();
   await page.getByLabel("2b").check();
   await page.getByLabel("Notes").fill("Check later");
   await page.getByRole("button", { name: "Next" }).click();
@@ -52,6 +59,7 @@ test("codes rows, reviews completion, and exports with title-cased name", async 
   await expect(firstQuestion).toBeVisible();
   await expect(firstQuestion).toContainText("Coding");
   await expect(firstQuestion).toContainText("Note");
+  await expect(firstQuestion).toContainText("Flagged");
   await expect(secondQuestion).toContainText("Coding");
   await expect(secondQuestion).toContainText("No note");
 
@@ -67,9 +75,9 @@ test("codes rows, reviews completion, and exports with title-cased name", async 
 
   expect(readFileSync(exportedPath, "utf8")).toBe(
     [
-      "Date,Question,Student Coding,Label,Notes",
-      "2026-01-12,How do I use R for this?,Clarification,2b,Check later",
-      "2026-01-13,Can this apply to my major?,Application,2e,NA",
+      "Date,Question,Student Coding,Label,Notes,Flag",
+      "2026-01-12,How do I use R for this?,Clarification,2b,Check later,TRUE",
+      "2026-01-13,Can this apply to my major?,Application,2e,NA,NA",
     ].join("\n"),
   );
 });
@@ -116,10 +124,10 @@ test("preserves CSV shape and escaped values on export", async ({ page }) => {
 
   expect(readFileSync(exportedPath, "utf8")).toBe(
     [
-      fields.join(","),
-      `2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,2b;2e,"${weirdNote.replaceAll('"', '""')}","keep ""as,is"""`,
-      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged",
-      "2026-02-03,Left blank on purpose,,Section C,NA,NA,",
+      [...fields, "Flag"].join(","),
+      `2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,2b;2e,"${weirdNote.replaceAll('"', '""')}","keep ""as,is""",NA`,
+      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged,NA",
+      "2026-02-03,Left blank on purpose,,Section C,NA,NA,,NA",
     ].join("\n"),
   );
 });

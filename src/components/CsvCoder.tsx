@@ -8,10 +8,13 @@ import { codingGroupLabels, codingOptions } from "../data/codingOptions";
 const STORAGE_KEY = "curiosity-coding-tool:v1";
 const LABEL_FIELD = "Label";
 const NOTES_FIELD = "Notes";
+const FLAG_FIELD = "Flag";
 const RUBRIC_URL =
   "https://www.dropbox.com/scl/fi/hk484lt52g8u4j87q8wcg/RubricApril2026.xlsx";
+const INSTRUCTOR_DIARY_URL =
+  "https://docs.google.com/spreadsheets/d/1OfLVEqSGIwWYakWB9QCMS1p0nSKU-8QfsL0Gb_YuN38/edit?usp=sharing";
 
-const groupOrder = ["0", "1", "2", "3"] as const;
+const groupOrder = ["1", "2", "3", "0"] as const;
 const codingOptionsByGroup = codingOptions.reduce<
   Record<(typeof groupOrder)[number], typeof codingOptions>
 >(
@@ -63,6 +66,21 @@ function normalizeRow(row: CsvRow, fields: string[]) {
   }, {});
 }
 
+function ensureFlagField(fields: string[]) {
+  return fields.includes(FLAG_FIELD) ? fields : [...fields, FLAG_FIELD];
+}
+
+function randomizeRows(rowsToRandomize: CsvRow[]) {
+  const nextRows = [...rowsToRandomize];
+
+  for (let index = nextRows.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [nextRows[index], nextRows[randomIndex]] = [nextRows[randomIndex], nextRows[index]];
+  }
+
+  return nextRows;
+}
+
 function isCsvRow(value: unknown): value is CsvRow {
   return (
     value !== null &&
@@ -91,11 +109,13 @@ function readSavedSession(): SavedSession | null {
       return null;
     }
 
+    const fields = ensureFlagField(parsed.fields);
+
     return {
       firstName: formatName(parsed.firstName),
       fileName: parsed.fileName,
-      fields: parsed.fields,
-      rows: parsed.rows,
+      fields,
+      rows: parsed.rows.map((row) => normalizeRow(row, fields)),
       currentIndex:
         typeof parsed.currentIndex === "number" && Number.isFinite(parsed.currentIndex)
           ? parsed.currentIndex
@@ -184,6 +204,7 @@ export default function CsvCoder() {
 
   const currentRow = rows[currentIndex];
   const selectedCodes = useMemo(() => parseLabelValue(currentRow?.[LABEL_FIELD]), [currentRow]);
+  const isCurrentRowFlagged = String(currentRow?.[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE";
   const codedCount = useMemo(
     () => rows.filter((row) => !isBlankOrNA(row[LABEL_FIELD])).length,
     [rows],
@@ -226,9 +247,11 @@ export default function CsvCoder() {
         return;
       }
 
+      const nextFields = ensureFlagField(parsedFields);
+
       setFileName(file.name);
-      setFields(parsedFields);
-      setRows(parsedRows.map((row) => normalizeRow(row, parsedFields)));
+      setFields(nextFields);
+      setRows(randomizeRows(parsedRows.map((row) => normalizeRow(row, nextFields))));
       setCurrentIndex(0);
       setIsOverview(false);
     } catch (parseError) {
@@ -258,6 +281,10 @@ export default function CsvCoder() {
       .filter((optionCode) => nextCodes.includes(optionCode));
 
     updateCurrentRow(LABEL_FIELD, sortedCodes.length ? sortedCodes.join(";") : "NA");
+  }
+
+  function toggleCurrentRowFlag() {
+    updateCurrentRow(FLAG_FIELD, isCurrentRowFlagged ? "NA" : "TRUE");
   }
 
   function scrollToQuestionOnMobile() {
@@ -359,6 +386,7 @@ export default function CsvCoder() {
       const nextRow = normalizeRow(row, fields);
       nextRow[LABEL_FIELD] = isBlankOrNA(nextRow[LABEL_FIELD]) ? "NA" : nextRow[LABEL_FIELD];
       nextRow[NOTES_FIELD] = isBlankOrNA(nextRow[NOTES_FIELD]) ? "NA" : nextRow[NOTES_FIELD];
+      nextRow[FLAG_FIELD] = isBlankOrNA(nextRow[FLAG_FIELD]) ? "NA" : nextRow[FLAG_FIELD];
       return nextRow;
     });
     const csv = formatCsv(exportRows, fields);
@@ -494,7 +522,9 @@ export default function CsvCoder() {
     );
   }
 
-  const detailFields = fields.filter((field) => field !== LABEL_FIELD && field !== NOTES_FIELD);
+  const detailFields = fields.filter(
+    (field) => field !== LABEL_FIELD && field !== NOTES_FIELD && field !== FLAG_FIELD,
+  );
 
   return (
     <>
@@ -570,6 +600,7 @@ export default function CsvCoder() {
                 {rows.map((row, index) => {
                   const hasCoding = !isBlankOrNA(row[LABEL_FIELD]);
                   const hasNotes = !isBlankOrNA(row[NOTES_FIELD]);
+                  const isFlagged = String(row[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE";
 
                   return (
                     <button
@@ -584,6 +615,7 @@ export default function CsvCoder() {
                       <span className="flex flex-wrap gap-2">
                         <StatusPill active={hasCoding} activeText="Coding" inactiveText="No coding" />
                         <StatusPill active={hasNotes} activeText="Note" inactiveText="No note" />
+                        <StatusPill active={isFlagged} activeText="Flagged" inactiveText="No flag" />
                       </span>
                     </button>
                   );
@@ -618,6 +650,16 @@ export default function CsvCoder() {
                   >
                     {currentRow?.[field] || <span className="text-neutral-400 dark:text-neutral-600">Blank</span>}
                   </dd>
+                  {field === "Student Coding" ? (
+                    <a
+                      className={`${styles.link} mt-2 inline-flex text-sm`}
+                      href={INSTRUCTOR_DIARY_URL}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      Instructor diary
+                    </a>
+                  ) : null}
                 </div>
               ))}
             </dl>
@@ -625,22 +667,37 @@ export default function CsvCoder() {
 
           <aside className={`${styles.card} p-4 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto`}>
             <div className="space-y-5">
-              <div>
-                <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
-                  Coding (
-                  <a
-                    className={styles.link}
-                    href={RUBRIC_URL}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    Rubric
-                  </a>
-                  )
-                </h2>
-                <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                  {selectedCodes.length ? selectedCodes.join(";") : "NA"}
-                </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
+                    Coding (
+                    <a
+                      className={styles.link}
+                      href={RUBRIC_URL}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      Rubric
+                    </a>
+                    )
+                  </h2>
+                  <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+                    {selectedCodes.length ? selectedCodes.join(";") : "NA"}
+                  </p>
+                </div>
+                <Button
+                  aria-pressed={isCurrentRowFlagged}
+                  className={
+                    isCurrentRowFlagged
+                      ? "border-amber-500 bg-amber-50 text-amber-950 hover:border-amber-600 hover:bg-amber-100 dark:border-amber-400 dark:bg-amber-400/10 dark:text-amber-100 dark:hover:border-amber-300 dark:hover:bg-amber-400/20"
+                      : ""
+                  }
+                  onClick={toggleCurrentRowFlag}
+                  variant="secondarySmall"
+                >
+                  <Icon name="flag" size={16} />
+                  {isCurrentRowFlagged ? "Flagged" : "Flag question"}
+                </Button>
               </div>
 
               <div className="grid gap-4">
