@@ -12,7 +12,9 @@
       "Bash(pnpm exec:*)",
       "Bash(pnpm run build:*)",
       "Bash(pnpm test:*)",
-      "Edit(tests/**)"
+      "Edit(tests/**)",
+      "Edit(./**)",
+      "Edit(src/components/CsvCoder/**)"
     ]
   }
 }

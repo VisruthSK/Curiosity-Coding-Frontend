@@ -237,7 +237,7 @@ test("renames coder and uses in-app start-over dialog", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Coder: Sam" })).toBeVisible();
 });
 
-test("Shift+Enter keybind navigates to next question", async ({ page }) => {
+test("Shift+Enter and Shift+Tab keybinds navigate questions", async ({ page }) => {
   const csvPath = createCsvFile("keybinds.csv", [
     '2026-01-12,"First question?",First,NA,NA',
     '2026-01-13,"Second question?",Second,NA,NA',
@@ -262,9 +262,25 @@ test("Shift+Enter keybind navigates to next question", async ({ page }) => {
   // Press Shift+Enter at the last question — should go to overview
   await page.keyboard.press("Shift+Enter");
   await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+
+  // Press Shift+Tab from overview — should go back to last question
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByText("Third question?")).toBeVisible();
+
+  // Press Shift+Tab to go to previous question
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByText("Second question?")).toBeVisible();
+
+  // Press Shift+Tab again
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Press Shift+Tab at the first question — should stay
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByText("First question?")).toBeVisible();
 });
 
-test("Shift+Enter works even when focused on notes textarea", async ({ page }) => {
+test("Shift+Enter and Shift+Tab work even when focused on notes textarea", async ({ page }) => {
   const csvPath = createCsvFile("keybinds-notes.csv", [
     '2026-01-12,"First question?",First,NA,NA',
     '2026-01-13,"Second question?",Second,NA,NA',
@@ -280,4 +296,98 @@ test("Shift+Enter works even when focused on notes textarea", async ({ page }) =
   await page.getByLabel("Notes").click();
   await page.keyboard.press("Shift+Enter");
   await expect(page.getByText("Second question?")).toBeVisible();
+
+  // Focus the notes textarea and press Shift+Tab — should navigate back
+  await page.getByLabel("Notes").click();
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByText("First question?")).toBeVisible();
+});
+
+test("keybind settings popover rebinds shortcuts", async ({ page }) => {
+  // Use desktop viewport so the keybinds button is visible
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  const csvPath = createCsvFile("rebind.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("dev");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Open keybind settings
+  await page.getByRole("button", { name: "Keybinds" }).click();
+  await expect(page.getByText("Keyboard shortcuts")).toBeVisible();
+
+  // Rebind "Next" to Ctrl+ArrowDown — click the Next keybind button, then press the combo
+  await page.getByRole("button", { name: "Rebind Next shortcut" }).click();
+  await expect(page.getByText("Press keys…")).toBeVisible();
+  await page.keyboard.press("Control+ArrowDown");
+
+  // Should show the new binding
+  await expect(page.getByText("Ctrl+↓")).toBeVisible();
+
+  // Close popover by clicking outside (on the question text)
+  await page.getByText("First question?").click();
+  await expect(page.getByText("Keyboard shortcuts")).toHaveCount(0);
+
+  // Default Shift+Enter should no longer navigate
+  await page.keyboard.press("Shift+Enter");
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // New Ctrl+ArrowDown should navigate to next
+  await page.keyboard.press("Control+ArrowDown");
+  await expect(page.getByText("Second question?")).toBeVisible();
+
+  // Open popover again and reset to defaults
+  await page.getByRole("button", { name: "Keybinds" }).click();
+  await expect(page.getByText("Keyboard shortcuts")).toBeVisible();
+  await page.getByText("Reset to defaults").click();
+  await expect(page.getByRole("button", { name: "Rebind Next shortcut" })).toHaveText("Shift+Enter");
+
+  // Close popover by clicking outside
+  await page.getByText("Second question?").click();
+
+  // Shift+Enter should work again after reset
+  await page.keyboard.press("Shift+Enter");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+});
+
+test("Shift+R toggles review overview", async ({ page }) => {
+  const csvPath = createCsvFile("review-keybind.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("rio");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Press Shift+R to enter overview
+  await page.keyboard.press("Shift+R");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+
+  // Press Shift+R again to return to coding
+  await page.keyboard.press("Shift+R");
+  await expect(page.getByText("First question?")).toBeVisible();
+});
+
+test("keybind settings button is hidden on mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  const csvPath = createCsvFile("mobile-keybinds.csv", [
+    '2026-01-12,"Only question?",Solo,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("mia");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+
+  // Keybinds button should not be visible on mobile
+  await expect(page.getByRole("button", { name: "Keybinds" })).toHaveCount(0);
 });

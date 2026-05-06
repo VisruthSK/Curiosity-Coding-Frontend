@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { formatCsv, parseCsvText } from "./CsvCoder/csv";
+import { KeybindSettings } from "./CsvCoder/KeybindSettings";
+import { DEFAULT_KEYBINDS, keybindMatches, readKeybindConfig, resetKeybindConfig, writeKeybindConfig } from "./CsvCoder/keybinds";
+import type { KeybindConfig } from "./CsvCoder/keybinds";
 import { ModalDialog } from "./CsvCoder/ModalDialog";
 import type { CsvRow, ModalState, SavedSession } from "./CsvCoder/types";
 import { BrandLabel, Button, FieldLabel, Icon, StatusPill, styles } from "./CsvCoder/ui";
@@ -153,8 +156,14 @@ export default function CsvCoder() {
   const [error, setError] = useState("");
   const [saveStatus, setSaveStatus] = useState("Not saved");
   const [modal, setModal] = useState<ModalState>(null);
+  const [keybindConfig, setKeybindConfig] = useState<KeybindConfig>(DEFAULT_KEYBINDS);
+  const [showKeybindSettings, setShowKeybindSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const questionSectionRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setKeybindConfig(readKeybindConfig());
+  }, []);
 
   useEffect(() => {
     if (!rows.length || modal) {
@@ -162,15 +171,21 @@ export default function CsvCoder() {
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Enter" && event.shiftKey) {
+      if (keybindMatches(keybindConfig.next, event)) {
         event.preventDefault();
         goToNext();
+      } else if (keybindMatches(keybindConfig.previous, event)) {
+        event.preventDefault();
+        goToPrevious();
+      } else if (keybindMatches(keybindConfig.review, event)) {
+        event.preventDefault();
+        setIsOverview((prev) => !prev);
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [rows.length, modal, currentIndex, isOverview]);
+  }, [rows.length, modal, currentIndex, isOverview, keybindConfig]);
 
   useEffect(() => {
     const saved = readSavedSession();
@@ -580,6 +595,32 @@ export default function CsvCoder() {
                   Review
                 </Button>
               ) : null}
+              <div className="hidden md:relative md:block">
+                <Button
+                  className="sm:w-auto"
+                  onClick={() => setShowKeybindSettings((prev) => !prev)}
+                  variant="secondarySmall"
+                >
+                  <Icon name="keyboard" size={16} />
+                  Keybinds
+                </Button>
+                {showKeybindSettings ? (
+                  <div className="absolute right-0 top-full z-10 mt-2">
+                    <KeybindSettings
+                      config={keybindConfig}
+                      onChange={(next) => {
+                        setKeybindConfig(next);
+                        writeKeybindConfig(next);
+                      }}
+                      onReset={() => {
+                        setKeybindConfig(DEFAULT_KEYBINDS);
+                        resetKeybindConfig();
+                      }}
+                      onClose={() => setShowKeybindSettings(false)}
+                    />
+                  </div>
+                ) : null}
+              </div>
               <Button
                 className="sm:w-auto"
                 onClick={() => setModal({ type: "start-over", target: "csv" })}
