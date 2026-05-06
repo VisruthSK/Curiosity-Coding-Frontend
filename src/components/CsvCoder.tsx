@@ -158,6 +158,7 @@ export default function CsvCoder() {
   const [modal, setModal] = useState<ModalState>(null);
   const [keybindConfig, setKeybindConfig] = useState<KeybindConfig>(DEFAULT_KEYBINDS);
   const [showKeybindSettings, setShowKeybindSettings] = useState(false);
+  const [keybindSettingsClosing, setKeybindSettingsClosing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const questionSectionRef = useRef<HTMLElement | null>(null);
 
@@ -599,7 +600,17 @@ export default function CsvCoder() {
                 <Button
                   className="sm:w-auto"
                   data-keybinds-toggle
-                  onClick={() => setShowKeybindSettings((prev) => !prev)}
+                  onClick={() => {
+                    if (showKeybindSettings) {
+                      setKeybindSettingsClosing(true);
+                      setTimeout(() => {
+                        setShowKeybindSettings(false);
+                        setKeybindSettingsClosing(false);
+                      }, 200);
+                    } else {
+                      setShowKeybindSettings(true);
+                    }
+                  }}
                   variant="secondarySmall"
                 >
                   <Icon name="keyboard" size={16} />
@@ -609,6 +620,7 @@ export default function CsvCoder() {
                   <div className="absolute right-0 top-full z-10 mt-2">
                     <KeybindSettings
                       config={keybindConfig}
+                      isClosing={keybindSettingsClosing}
                       onChange={(next) => {
                         setKeybindConfig(next);
                         writeKeybindConfig(next);
@@ -617,7 +629,13 @@ export default function CsvCoder() {
                         setKeybindConfig(DEFAULT_KEYBINDS);
                         resetKeybindConfig();
                       }}
-                      onClose={() => setShowKeybindSettings(false)}
+                      onClose={() => {
+                        setKeybindSettingsClosing(true);
+                        setTimeout(() => {
+                          setShowKeybindSettings(false);
+                          setKeybindSettingsClosing(false);
+                        }, 200);
+                      }}
                     />
                   </div>
                 ) : null}

@@ -6,16 +6,16 @@ type CaptureTarget = "next" | "previous" | "review" | null;
 
 type KeybindSettingsProps = {
   config: KeybindConfig;
+  isClosing: boolean;
   onChange: (config: KeybindConfig) => void;
   onReset: () => void;
   onClose: () => void;
 };
 
-export function KeybindSettings({ config, onChange, onReset, onClose }: KeybindSettingsProps) {
+export function KeybindSettings({ config, isClosing, onChange, onReset, onClose }: KeybindSettingsProps) {
   const [captureTarget, setCaptureTarget] = useState<CaptureTarget>(null);
   const [captureValue, setCaptureValue] = useState<Keybind | null>(null);
   const [blockedWarning, setBlockedWarning] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -56,9 +56,10 @@ export function KeybindSettings({ config, onChange, onReset, onClose }: KeybindS
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [captureTarget, config, onChange]);
 
-  // Close on outside click (but not on the theme toggle)
+  // Close on outside click (but not on the theme toggle or keybinds button)
   useEffect(() => {
     function handleClick(event: MouseEvent) {
+      if (isClosing) return;
       if (!popoverRef.current) return;
       if (popoverRef.current.contains(event.target as Node)) return;
       if ((event.target as HTMLElement).closest("[data-theme-toggle], [data-keybinds-toggle]")) return;
@@ -67,7 +68,7 @@ export function KeybindSettings({ config, onChange, onReset, onClose }: KeybindS
 
     document.addEventListener("click", handleClick, true);
     return () => document.removeEventListener("click", handleClick, true);
-  }, [onClose]);
+  }, [isClosing, onClose]);
 
   function startCapture(target: CaptureTarget) {
     setCaptureTarget(target);
@@ -78,7 +79,11 @@ export function KeybindSettings({ config, onChange, onReset, onClose }: KeybindS
   return (
     <div
       ref={popoverRef}
-      className="w-64 rounded-lg border border-stone-200 bg-white p-3 shadow-lg animate-in fade-in-0 zoom-in-98 duration-200 ease-out dark:border-neutral-700 dark:bg-neutral-900"
+      className={`w-64 rounded-lg border border-stone-200 bg-white p-3 shadow-lg duration-200 ease-out dark:border-neutral-700 dark:bg-neutral-900 ${
+        isClosing
+          ? "animate-out fade-out-0 zoom-out-98"
+          : "animate-in fade-in-0 zoom-in-98"
+      }`}
     >
       <div className="mb-2 text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-500">
         Keyboard shortcuts
