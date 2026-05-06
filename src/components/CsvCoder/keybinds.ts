@@ -10,6 +10,7 @@ export type KeybindConfig = {
   next: Keybind;
   previous: Keybind;
   review: Keybind;
+  flag: Keybind;
 };
 
 const KEYBINDS_STORAGE_KEY = "curiosity-coding-tool:keybinds:v1";
@@ -18,6 +19,7 @@ export const DEFAULT_KEYBINDS: KeybindConfig = {
   next: { key: "Enter", shiftKey: true, ctrlKey: false, altKey: false, metaKey: false },
   previous: { key: "Tab", shiftKey: true, ctrlKey: false, altKey: false, metaKey: false },
   review: { key: "r", shiftKey: true, ctrlKey: false, altKey: false, metaKey: false },
+  flag: { key: "f", shiftKey: true, ctrlKey: false, altKey: false, metaKey: false },
 };
 
 const BLOCKED_COMBOS: Array<(kb: Keybind) => boolean> = [
@@ -81,11 +83,11 @@ export function readKeybindConfig(): KeybindConfig {
     if (!raw) return DEFAULT_KEYBINDS;
 
     const parsed = JSON.parse(raw) as Partial<KeybindConfig>;
-    if (!isValidKeybind(parsed.next) || !isValidKeybind(parsed.previous) || !isValidKeybind(parsed.review)) {
+    if (!isValidKeybind(parsed.next) || !isValidKeybind(parsed.previous) || !isValidKeybind(parsed.review) || !isValidKeybind(parsed.flag)) {
       return DEFAULT_KEYBINDS;
     }
 
-    return { next: parsed.next, previous: parsed.previous, review: parsed.review };
+    return { next: parsed.next, previous: parsed.previous, review: parsed.review, flag: parsed.flag };
   } catch {
     return DEFAULT_KEYBINDS;
   }

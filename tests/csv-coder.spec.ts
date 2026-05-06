@@ -391,3 +391,24 @@ test("keybind settings button is hidden on mobile viewport", async ({ page }) =>
   // Keybinds button should not be visible on mobile
   await expect(page.getByRole("button", { name: "Keybinds" })).toHaveCount(0);
 });
+
+test("Shift+F toggles flag on current question", async ({ page }) => {
+  const csvPath = createCsvFile("flag-keybind.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("sam");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Press Shift+F to flag
+  await page.keyboard.press("Shift+F");
+  await expect(page.getByRole("button", { name: "Flagged" })).toBeVisible();
+
+  // Press Shift+F again to unflag
+  await page.keyboard.press("Shift+F");
+  await expect(page.getByRole("button", { name: "Flag question" })).toBeVisible();
+});

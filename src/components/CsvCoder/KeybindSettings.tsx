@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { Keybind, KeybindConfig } from "./keybinds";
 import { DEFAULT_KEYBINDS, formatKeybind, isBlockedKeybind, keybindFromEvent } from "./keybinds";
 
-type CaptureTarget = "next" | "previous" | "review" | null;
+type CaptureTarget = "next" | "previous" | "review" | "flag" | null;
 
 type KeybindSettingsProps = {
   config: KeybindConfig;
@@ -46,7 +46,7 @@ export function KeybindSettings({ config, isClosing, onChange, onReset, onClose 
         return;
       }
 
-      onChange({ ...config, [captureTarget as "next" | "previous" | "review"]: kb });
+      onChange({ ...config, [captureTarget as "next" | "previous" | "review" | "flag"]: kb });
       setCaptureTarget(null);
       setCaptureValue(null);
       setBlockedWarning(false);
@@ -111,6 +111,13 @@ export function KeybindSettings({ config, isClosing, onChange, onReset, onClose 
           isBlocked={blockedWarning && captureTarget === "review"}
           onClick={() => startCapture("review")}
         />
+        <KeybindRow
+          label="Flag"
+          keybind={captureTarget === "flag" && captureValue ? captureValue : config.flag}
+          isCapturing={captureTarget === "flag"}
+          isBlocked={blockedWarning && captureTarget === "flag"}
+          onClick={() => startCapture("flag")}
+        />
       </div>
 
       {blockedWarning ? (
@@ -149,7 +156,7 @@ function KeybindRow({
   onClick: () => void;
 }) {
   const isDefault =
-    JSON.stringify(keybind) === JSON.stringify(DEFAULT_KEYBINDS[label.toLowerCase() as "next" | "previous" | "review"]);
+    JSON.stringify(keybind) === JSON.stringify(DEFAULT_KEYBINDS[label.toLowerCase() as "next" | "previous" | "review" | "flag"]);
 
   return (
     <div className="flex items-center justify-between gap-2">

@@ -181,6 +181,9 @@ export default function CsvCoder() {
       } else if (keybindMatches(keybindConfig.review, event)) {
         event.preventDefault();
         setIsOverview((prev) => !prev);
+      } else if (!isOverview && keybindMatches(keybindConfig.flag, event)) {
+        event.preventDefault();
+        toggleCurrentRowFlag();
       }
     }
 
@@ -316,7 +319,13 @@ export default function CsvCoder() {
   }
 
   function toggleCurrentRowFlag() {
-    updateCurrentRow(FLAG_FIELD, isCurrentRowFlagged ? "NA" : "TRUE");
+    setRows((previousRows) =>
+      previousRows.map((row, index) => {
+        if (index !== currentIndex) return row;
+        const isFlagged = String(row[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE";
+        return { ...row, [FLAG_FIELD]: isFlagged ? "NA" : "TRUE" };
+      }),
+    );
   }
 
   function scrollToQuestionOnMobile() {
