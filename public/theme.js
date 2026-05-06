@@ -13,7 +13,10 @@
     }
   };
 
-  const setTheme = (theme) => {
+  const setTheme = (theme, instant = false) => {
+    if (instant) {
+      root.classList.add("theme-transition-none");
+    }
     activeTheme = theme;
     root.classList.toggle("dark", theme === "dark");
     root.dataset.theme = theme;
@@ -23,6 +26,10 @@
       button.querySelector('[data-theme-icon="dark"]')?.classList.toggle("hidden", theme === "dark");
       button.querySelector('[data-theme-icon="light"]')?.classList.toggle("hidden", theme !== "dark");
     });
+    if (instant) {
+      root.offsetHeight; // Force reflow
+      root.classList.remove("theme-transition-none");
+    }
   };
 
   const saveTheme = (theme) => {
@@ -46,7 +53,7 @@
       button.addEventListener("click", () => {
         const nextTheme = activeTheme === "dark" ? "light" : "dark";
         saveTheme(nextTheme);
-        setTheme(nextTheme);
+        setTheme(nextTheme, true);
       });
     });
   });

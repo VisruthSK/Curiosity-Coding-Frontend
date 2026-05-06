@@ -68,6 +68,10 @@ const iconPaths = {
     ["path", { d: "m17 8-5-5-5 5" }],
     ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }],
   ],
+  keyboard: [
+    ["rect", { x: "2", y: "4", width: "20", height: "16", rx: "2" }],
+    ["path", { d: "M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10" }],
+  ],
 } as const;
 
 export type IconName = keyof typeof iconPaths;
