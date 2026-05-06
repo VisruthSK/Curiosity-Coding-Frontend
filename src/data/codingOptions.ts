@@ -23,7 +23,7 @@ export const codingOptions: CodingOption[] = [
   {
     code: "1c",
     group: "1",
-    label: "Own or others' understanding about statistics or technology",
+    label: "Own or others' understanding about statistics or technology/reflection",
   },
   {
     code: "1d",
