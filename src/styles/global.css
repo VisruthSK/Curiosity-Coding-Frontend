@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+@custom-variant has-pointer (@media (hover: hover) and (pointer: fine));
 
 :root {
   color-scheme: light;

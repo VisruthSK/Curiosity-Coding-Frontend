@@ -377,8 +377,22 @@ test("Shift+R toggles review overview", async ({ page }) => {
   await expect(page.getByText("First question?")).toBeVisible();
 });
 
-test("keybind settings button is hidden on mobile viewport", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test("keybind settings button is hidden on touch-only devices", async ({ browser }) => {
+  const context = await browser.newContext({
+    hasTouch: true,
+    isMobile: true,
+    viewport: { width: 390, height: 844 },
+  });
+  const page = await context.newPage();
+
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+    Object.defineProperty(Math, "random", {
+      configurable: true,
+      value: () => 0.99,
+    });
+  });
+  await page.goto("/");
 
   const csvPath = createCsvFile("mobile-keybinds.csv", [
     '2026-01-12,"Only question?",Solo,NA,NA',
@@ -388,8 +402,10 @@ test("keybind settings button is hidden on mobile viewport", async ({ page }) =>
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Select CSV file").setInputFiles(csvPath);
 
-  // Keybinds button should not be visible on mobile
+  // Keybinds button should not be visible on touch-only devices
   await expect(page.getByRole("button", { name: "Keybinds" })).toHaveCount(0);
+
+  await context.close();
 });
 
 test("Shift+F toggles flag on current question", async ({ page }) => {

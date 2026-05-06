@@ -605,7 +605,7 @@ export default function CsvCoder() {
                   Review
                 </Button>
               ) : null}
-              <div className="hidden md:relative md:block">
+              <div className="hidden has-pointer:relative has-pointer:block">
                 <Button
                   className="sm:w-auto"
                   data-keybinds-toggle
