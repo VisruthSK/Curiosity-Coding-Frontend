@@ -157,6 +157,22 @@ export default function CsvCoder() {
   const questionSectionRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    if (!rows.length || modal) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Enter" && event.shiftKey) {
+        event.preventDefault();
+        goToNext();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [rows.length, modal, currentIndex, isOverview]);
+
+  useEffect(() => {
     const saved = readSavedSession();
 
     if (saved) {

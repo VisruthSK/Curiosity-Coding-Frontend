@@ -236,3 +236,48 @@ test("renames coder and uses in-app start-over dialog", async ({ page }) => {
   await expect(page.getByText("Choose CSV")).toBeVisible();
   await expect(page.getByRole("button", { name: "Coder: Sam" })).toBeVisible();
 });
+
+test("Shift+Enter keybind navigates to next question", async ({ page }) => {
+  const csvPath = createCsvFile("keybinds.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+    '2026-01-14,"Third question?",Third,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("kim");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+
+  // With random=0.99, order stays [First, Second, Third]; starts on First
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Press Shift+Enter to go to next question
+  await page.keyboard.press("Shift+Enter");
+  await expect(page.getByText("Second question?")).toBeVisible();
+
+  // Press Shift+Enter again
+  await page.keyboard.press("Shift+Enter");
+  await expect(page.getByText("Third question?")).toBeVisible();
+
+  // Press Shift+Enter at the last question — should go to overview
+  await page.keyboard.press("Shift+Enter");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+});
+
+test("Shift+Enter works even when focused on notes textarea", async ({ page }) => {
+  const csvPath = createCsvFile("keybinds-notes.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("lee");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Focus the notes textarea and press Shift+Enter — should navigate, not insert newline
+  await page.getByLabel("Notes").click();
+  await page.keyboard.press("Shift+Enter");
+  await expect(page.getByText("Second question?")).toBeVisible();
+});

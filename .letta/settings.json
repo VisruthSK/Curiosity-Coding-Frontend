@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(git shortlog:*)",
+      "Bash(git log:*)",
+      "Bash(Get-ChildItem -Path \"$env:MEMORY_DIR\" -Recurse -Filter \"*.md\")",
+      "Bash(Test-Path \"$env:USERPROFILE\\.claude\\history.jsonl\")",
+      "Bash((Get-Content \"$env:USERPROFILE\\.codex\\history.jsonl\")",
+      "Bash(Get-ChildItem -Path . -Recurse -Depth 2 -Name)",
+      "Edit(src/components/**)",
+      "Bash(pnpm exec:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm test:*)",
+      "Edit(tests/**)"
+    ]
+  }
+}
