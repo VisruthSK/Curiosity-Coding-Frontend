@@ -598,6 +598,7 @@ export default function CsvCoder() {
               <div className="hidden md:relative md:block">
                 <Button
                   className="sm:w-auto"
+                  data-keybinds-toggle
                   onClick={() => setShowKeybindSettings((prev) => !prev)}
                   variant="secondarySmall"
                 >
