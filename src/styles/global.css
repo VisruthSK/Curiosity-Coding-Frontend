@@ -31,10 +31,16 @@ body {
     #f7f5f1;
 }
 
-@media (min-width: 1280px) {
-  html,
-  body {
-    height: 100%;
+.app-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-y: auto;
+}
+
+@media (min-width: 1280px) and (min-height: 760px) {
+  .app-shell {
+    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
   }
 }
