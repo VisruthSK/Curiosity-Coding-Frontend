@@ -377,7 +377,7 @@ test("Shift+R toggles review overview", async ({ page }) => {
   await expect(page.getByText("First question?")).toBeVisible();
 });
 
-test("keybind settings button is hidden on touch-only devices", async ({ browser }) => {
+test("keybind settings button remains available on touch devices", async ({ browser }) => {
   const context = await browser.newContext({
     hasTouch: true,
     isMobile: true,
@@ -402,8 +402,7 @@ test("keybind settings button is hidden on touch-only devices", async ({ browser
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Select CSV file").setInputFiles(csvPath);
 
-  // Keybinds button should not be visible on touch-only devices
-  await expect(page.getByRole("button", { name: "Keybinds" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Keybinds" })).toBeVisible();
 
   await context.close();
 });

@@ -470,7 +470,7 @@ export default function CsvCoder() {
   if (!isNameConfirmed) {
     return (
       <>
-      <main className="h-dvh overflow-hidden px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
+      <main className="app-shell px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
         <section className="mx-auto flex h-full w-full max-w-[1800px] items-center justify-center">
           <div className={`${styles.card} w-full p-5 sm:max-w-lg sm:p-6 lg:p-8`}>
             <div className="mb-6 flex items-start justify-between gap-4">
@@ -509,7 +509,7 @@ export default function CsvCoder() {
   if (!rows.length) {
     return (
       <>
-      <main className="h-dvh overflow-hidden px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
+      <main className="app-shell px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
         <section className="mx-auto flex h-full w-full max-w-[1800px] flex-col">
           <div className={`${styles.card} p-5 sm:p-6 lg:p-8`}>
           <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
@@ -569,7 +569,7 @@ export default function CsvCoder() {
 
   return (
     <>
-    <main className="min-h-dvh overflow-y-auto px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:h-dvh xl:overflow-hidden xl:px-8">
+    <main className="app-shell px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:px-8">
       <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-3 sm:gap-4 xl:h-full xl:min-h-0">
         <header className={`${styles.card} shrink-0 p-3 sm:p-4`}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -605,7 +605,7 @@ export default function CsvCoder() {
                   Review
                 </Button>
               ) : null}
-              <div className="hidden has-pointer:relative has-pointer:block">
+              <div className="relative">
                 <Button
                   className="sm:w-auto"
                   data-keybinds-toggle

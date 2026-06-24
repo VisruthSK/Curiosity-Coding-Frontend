@@ -13,9 +13,9 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: "pnpm exec astro dev --host 127.0.0.1 --port 1314",
+    command: "node tests/astro-dev-server.mjs --host 127.0.0.1 --port 1314",
     url: "http://127.0.0.1:1314",
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
   projects: [
