@@ -63,7 +63,7 @@ export const codingOptions: CodingOption[] = [
   {
     code: "2e",
     group: "2",
-    label: "Application or use of methods outside class",
+    label: "Application or use of methods outside class (next step, future topic, futher exploration)",
   },
   {
     code: "2f",

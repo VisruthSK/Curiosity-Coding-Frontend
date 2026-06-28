@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Curiosity Coding",
+  "version": "0.1.0",
+  "identifier": "com.visruth.curiositycoding",
+  "build": {
+    "beforeDevCommand": "pnpm dev -- --host 127.0.0.1 --port 1313",
+    "beforeBuildCommand": "pnpm build",
+    "devUrl": "http://127.0.0.1:1313",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://github.com; media-src 'none'; object-src 'none'; child-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'self'; form-action 'none'"
+    },
+    "windows": [
+      {
+        "title": "Curiosity Coding",
+        "width": 1280,
+        "height": 860,
+        "minWidth": 900,
+        "minHeight": 640,
+        "resizable": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "category": "Education",
+    "copyright": "Copyright (c) Visruth S",
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "createUpdaterArtifacts": false
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/VisruthSK/Curiosity-Coding-Frontend/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDREODczNjkzRjIzMTI5NzYKUldSMktUSHlremFIVFFlWkVaMnQrWVIvMzFJRExJVENqVTBxU1BxWGxuVWgyNVFESGxEaVpRRisK"
+    }
+  }
+}
