@@ -8,6 +8,7 @@
     "build": "astro check && astro build",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
+    "desktop:test": "cargo test --manifest-path src-tauri/Cargo.toml",
     "test": "playwright test",
     "preview": "astro preview",
     "astro": "astro"

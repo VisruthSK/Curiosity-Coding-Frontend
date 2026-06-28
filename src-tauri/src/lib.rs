@@ -56,6 +56,7 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::sanitize_export_name;
+    use serde_json::Value;
 
     #[test]
     fn keeps_valid_csv_export_names() {
@@ -76,5 +77,23 @@ mod tests {
     #[test]
     fn falls_back_for_blank_export_names() {
         assert_eq!(sanitize_export_name("   "), "coded-data.csv");
+    }
+
+    #[test]
+    fn release_config_generates_signed_updater_metadata() {
+        let config: Value = serde_json::from_str(include_str!("../tauri.conf.json"))
+            .expect("tauri.conf.json should be valid JSON");
+
+        assert_eq!(config["bundle"]["createUpdaterArtifacts"], true);
+        assert_eq!(
+            config["plugins"]["updater"]["endpoints"][0],
+            "https://github.com/VisruthSK/Curiosity-Coding-Frontend/releases/latest/download/latest.json"
+        );
+        assert!(
+            config["plugins"]["updater"]["pubkey"]
+                .as_str()
+                .is_some_and(|pubkey| !pubkey.trim().is_empty()),
+            "updater pubkey must be configured for signed latest.json metadata"
+        );
     }
 }
