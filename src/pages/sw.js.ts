@@ -1,4 +1,9 @@
-const CACHE_VERSION = "curiosity-coding-v1";
+export const prerender = true;
+
+const buildId = new Date().toISOString();
+
+const serviceWorker = String.raw`
+const CACHE_VERSION = "curiosity-coding-${buildId}";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -23,7 +28,7 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key))),
+        Promise.all(keys.filter((key) => key.startsWith("curiosity-coding-") && key !== CACHE_VERSION).map((key) => caches.delete(key))),
       )
       .then(() => self.clients.claim()),
   );
@@ -92,4 +97,14 @@ async function getInstallAssets() {
   } catch {
     return APP_SHELL;
   }
+}
+`;
+
+export function GET() {
+  return new Response(serviceWorker, {
+    headers: {
+      "content-type": "application/javascript; charset=utf-8",
+      "cache-control": "no-cache",
+    },
+  });
 }
