@@ -31,7 +31,8 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
 
     window.__TAURI_INTERNALS__ = {
       invoke: async (cmd: string, args: unknown) => {
-        (window as typeof window & { __desktopExport?: unknown }).__desktopExport = { cmd, args };
+        const testWindow = window as typeof window & { __desktopInvokes?: unknown[] };
+        testWindow.__desktopInvokes = [...(testWindow.__desktopInvokes ?? []), { cmd, args }];
         return null;
       },
     };
@@ -47,7 +48,9 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
   await page.getByRole("button", { name: "Export CSV" }).click();
 
   const exportCall = await page.evaluate(
-    () => (window as typeof window & { __desktopExport?: unknown }).__desktopExport,
+    () =>
+      (window as typeof window & { __desktopInvokes?: { cmd: string; args: unknown }[] })
+        .__desktopInvokes?.find((call) => call.cmd === "export_csv"),
   );
 
   expect(exportCall).toEqual({

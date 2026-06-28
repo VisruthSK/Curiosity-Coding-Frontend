@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::Path};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
@@ -19,7 +19,7 @@ fn export_csv(app: AppHandle, file_name: String, content: String) -> Result<(), 
         .into_path()
         .map_err(|error| format!("Could not resolve export path: {error}"))?;
 
-    fs::write(path, content).map_err(|error| format!("Could not write CSV: {error}"))
+    write_csv_file(&path, &content)
 }
 
 fn sanitize_export_name(file_name: &str) -> String {
@@ -43,6 +43,10 @@ fn sanitize_export_name(file_name: &str) -> String {
     }
 }
 
+fn write_csv_file(path: &Path, content: &str) -> Result<(), String> {
+    fs::write(path, content).map_err(|error| format!("Could not write CSV: {error}"))
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -55,8 +59,12 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::sanitize_export_name;
+    use super::{sanitize_export_name, write_csv_file};
     use serde_json::Value;
+    use std::{
+        fs::{self, read_to_string},
+        time::{SystemTime, UNIX_EPOCH},
+    };
 
     #[test]
     fn keeps_valid_csv_export_names() {
@@ -95,5 +103,44 @@ mod tests {
                 .is_some_and(|pubkey| !pubkey.trim().is_empty()),
             "updater pubkey must be configured for signed latest.json metadata"
         );
+    }
+
+    #[test]
+    fn writes_csv_export_content_to_selected_path() {
+        let path = std::env::temp_dir().join(format!(
+            "curiosity-coding-export-{}.csv",
+            unique_test_suffix()
+        ));
+
+        write_csv_file(&path, "Date,Label,Notes\n2026-06-01,2b,Desktop export")
+            .expect("CSV export should write to the selected path");
+
+        assert_eq!(
+            read_to_string(&path).expect("CSV export file should be readable"),
+            "Date,Label,Notes\n2026-06-01,2b,Desktop export"
+        );
+
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn reports_csv_export_write_failures() {
+        let missing_directory = std::env::temp_dir().join(format!(
+            "curiosity-coding-missing-{}",
+            unique_test_suffix()
+        ));
+        let path = missing_directory.join("export.csv");
+
+        let error = write_csv_file(&path, "Date,Label\n2026-06-01,2b")
+            .expect_err("missing parent directory should fail CSV export");
+
+        assert!(error.starts_with("Could not write CSV:"));
+    }
+
+    fn unique_test_suffix() -> u128 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after Unix epoch")
+            .as_nanos()
     }
 }

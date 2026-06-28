@@ -1,6 +1,7 @@
 {
   "name": "curiosity-coding-frontend",
   "version": "0.1.0",
+  "author": "Visruth Srimath Kandali",
   "private": true,
   "type": "module",
   "scripts": {
