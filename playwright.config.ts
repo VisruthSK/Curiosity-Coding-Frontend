@@ -1,7 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 export default defineConfig({
   testDir: "./tests",
+  outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR ?? join(tmpdir(), "curiosity-coding-playwright-results"),
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

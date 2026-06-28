@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Curiosity Coding Webtool">
+  <rect width="512" height="512" rx="96" fill="#f8fafc"/>
+  <rect x="82" y="98" width="348" height="316" rx="34" fill="#ffffff" stroke="#1d4ed8" stroke-width="24"/>
+  <path d="M142 176h228M142 248h168M142 320h112" fill="none" stroke="#0f172a" stroke-linecap="round" stroke-width="28"/>
+  <path d="m330 318 34 34 68-86" fill="none" stroke="#059669" stroke-linecap="round" stroke-linejoin="round" stroke-width="30"/>
+</svg>

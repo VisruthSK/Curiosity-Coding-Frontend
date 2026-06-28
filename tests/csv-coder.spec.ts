@@ -7,6 +7,8 @@ const rubricUrl = "https://www.dropbox.com/scl/fi/hk484lt52g8u4j87q8wcg/RubricAp
 const instructorDiaryUrl =
   "https://docs.google.com/spreadsheets/d/1OfLVEqSGIwWYakWB9QCMS1p0nSKU-8QfsL0Gb_YuN38/edit?usp=sharing";
 
+test.use({ serviceWorkers: "block" });
+
 function createCsvFile(name: string, rows: string[]) {
   const directory = mkdtempSync(join(tmpdir(), "curiosity-coding-"));
   const filePath = join(directory, name);
@@ -381,6 +383,7 @@ test("keybind settings button remains available on touch devices", async ({ brow
   const context = await browser.newContext({
     hasTouch: true,
     isMobile: true,
+    serviceWorkers: "block",
     viewport: { width: 390, height: 844 },
   });
   const page = await context.newPage();
