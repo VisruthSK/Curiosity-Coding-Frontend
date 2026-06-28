@@ -7,8 +7,10 @@ import { ModalDialog } from "./CsvCoder/ModalDialog";
 import type { CsvRow, ModalState, SavedSession } from "./CsvCoder/types";
 import { BrandLabel, Button, FieldLabel, Icon, StatusPill, styles } from "./CsvCoder/ui";
 import { codingGroupLabels, codingOptions } from "../data/codingOptions";
+import { DesktopUpdateNotice } from "./DesktopUpdateNotice";
 
 const STORAGE_KEY = "curiosity-coding-tool:v1";
+const APP_TITLE = "Curiosity Coding Webtool";
 const LABEL_FIELD = "Label";
 const NOTES_FIELD = "Notes";
 const FLAG_FIELD = "Flag";
@@ -130,7 +132,17 @@ function readSavedSession(): SavedSession | null {
   }
 }
 
-function writeDownload(content: string, fileName: string) {
+function isTauriDesktop() {
+  return Boolean(window.__TAURI_INTERNALS__);
+}
+
+async function writeDownload(content: string, fileName: string) {
+  if (isTauriDesktop()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("export_csv", { fileName, content });
+    return;
+  }
+
   const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -422,7 +434,7 @@ export default function CsvCoder() {
     setModal(null);
   }
 
-  function exportCsv() {
+  async function exportCsv() {
     const exportRows = rows.map((row) => {
       const nextRow = normalizeRow(row, fields);
       nextRow[LABEL_FIELD] = isBlankOrNA(nextRow[LABEL_FIELD]) ? "NA" : nextRow[LABEL_FIELD];
@@ -432,7 +444,12 @@ export default function CsvCoder() {
     });
     const csv = formatCsv(exportRows, fields);
 
-    writeDownload(csv, getExportName(fileName, firstName));
+    try {
+      await writeDownload(csv, getExportName(fileName, firstName));
+      setError("");
+    } catch (exportError) {
+      setError(exportError instanceof Error ? exportError.message : "CSV export failed.");
+    }
   }
 
   function keepNotesVisible(event: Event) {
@@ -475,7 +492,7 @@ export default function CsvCoder() {
           <div className={`${styles.card} w-full p-5 sm:max-w-lg sm:p-6 lg:p-8`}>
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <BrandLabel />
+                <BrandLabel label={APP_TITLE} />
                 <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
                   Enter first name
                 </h1>
@@ -502,6 +519,7 @@ export default function CsvCoder() {
         </section>
       </main>
       {modalElement}
+      <DesktopUpdateNotice />
       </>
     );
   }
@@ -514,7 +532,7 @@ export default function CsvCoder() {
           <div className={`${styles.card} p-5 sm:p-6 lg:p-8`}>
           <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <BrandLabel />
+              <BrandLabel label={APP_TITLE} />
               <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
                 Choose CSV
               </h1>
@@ -559,6 +577,7 @@ export default function CsvCoder() {
         </section>
       </main>
       {modalElement}
+      <DesktopUpdateNotice />
       </>
     );
   }
@@ -886,6 +905,7 @@ export default function CsvCoder() {
       </div>
     </main>
     {modalElement}
+    <DesktopUpdateNotice />
     </>
   );
 }

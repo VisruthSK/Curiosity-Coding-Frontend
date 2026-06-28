@@ -1,0 +1,63 @@
+import { expect, test } from "@playwright/test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+test.use({ serviceWorkers: "block" });
+
+function createCsvFile(name: string) {
+  const directory = mkdtempSync(join(tmpdir(), "curiosity-coding-desktop-"));
+  const filePath = join(directory, name);
+
+  writeFileSync(
+    filePath,
+    [
+      "Date,Question,Student Coding,Label,Notes",
+      '2026-06-01,"Can desktop export save?",Desktop check,NA,NA',
+    ].join("\n"),
+    "utf8",
+  );
+  return filePath;
+}
+
+test("desktop export sends CSV content to the Tauri export command", async ({ page }) => {
+  const csvPath = createCsvFile("desktop export.csv");
+
+  await page.addInitScript(() => {
+    Object.defineProperty(Math, "random", {
+      configurable: true,
+      value: () => 0.99,
+    });
+
+    window.__TAURI_INTERNALS__ = {
+      invoke: async (cmd: string, args: unknown) => {
+        (window as typeof window & { __desktopExport?: unknown }).__desktopExport = { cmd, args };
+        return null;
+      },
+    };
+  });
+
+  await page.goto("/");
+  await page.getByLabel("First name").fill("nora");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+  await page.getByLabel("2b").check();
+  await page.getByLabel("Notes").fill("Saved from desktop");
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Export CSV" }).click();
+
+  const exportCall = await page.evaluate(
+    () => (window as typeof window & { __desktopExport?: unknown }).__desktopExport,
+  );
+
+  expect(exportCall).toEqual({
+    cmd: "export_csv",
+    args: {
+      fileName: "desktop export Nora.csv",
+      content: [
+        "Date,Question,Student Coding,Label,Notes,Flag",
+        "2026-06-01,Can desktop export save?,Desktop check,2b,Saved from desktop,NA",
+      ].join("\n"),
+    },
+  });
+});

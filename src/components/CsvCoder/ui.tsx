@@ -126,8 +126,8 @@ export function Button({ children, className, type = "button", variant = "second
   );
 }
 
-export function BrandLabel() {
-  return <p className={styles.brand}>Curiosity Coding</p>;
+export function BrandLabel({ label = "Curiosity Coding Webtool" }: { label?: string }) {
+  return <p className={styles.brand}>{label}</p>;
 }
 
 export function FieldLabel({ children, htmlFor }: { children: ComponentChildren; htmlFor: string }) {

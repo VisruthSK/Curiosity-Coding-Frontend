@@ -6,12 +6,17 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro check && astro build",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build",
     "test": "playwright test",
     "preview": "astro preview",
     "astro": "astro"
   },
   "dependencies": {
     "@astrojs/preact": "^6.0.0",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "astro": "^7.0.2",
     "d3-dsv": "^3.0.1",
     "preact": "^10.29.2",
@@ -21,6 +26,7 @@
     "@astrojs/check": "^0.9.9",
     "@playwright/test": "^1.61.0",
     "@tailwindcss/vite": "^4.3.1",
+    "@tauri-apps/cli": "^2.11.3",
     "tailwindcss": "^4.3.1",
     "typescript": "^6.0.3"
   }
