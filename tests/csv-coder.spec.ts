@@ -160,6 +160,33 @@ test("preserves CSV shape and escaped values on export", async ({ page }) => {
   );
 });
 
+test("flushes the latest coding state when the page is hidden", async ({ page }) => {
+  const csvPath = createCsvFile("autosave survey.csv", [
+    '2026-07-01,"Will this survive a quick close?",Autosave check,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("maya");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+  await page.getByLabel("2b").check();
+  await page.getByLabel("Notes").fill("Close-safe note");
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+
+  const savedSession = await page.evaluate(() =>
+    JSON.parse(window.localStorage.getItem("curiosity-coding-tool:v1") ?? "null"),
+  );
+
+  expect(savedSession.rows[0].Label).toBe("2b");
+  expect(savedSession.rows[0].Notes).toBe("Close-safe note");
+});
+
 test("randomizes loaded rows and keeps no-question coding last", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(Math, "random", {

@@ -47,6 +47,11 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Export CSV" }).click();
 
+  await page.waitForFunction(() =>
+    (window as typeof window & { __desktopInvokes?: { cmd: string; args: unknown }[] })
+      .__desktopInvokes?.some((call) => call.cmd === "export_csv"),
+  );
+
   const exportCall = await page.evaluate(
     () =>
       (window as typeof window & { __desktopInvokes?: { cmd: string; args: unknown }[] })

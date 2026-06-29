@@ -230,16 +230,7 @@ export default function CsvCoder() {
 
     setSaveStatus("Saving...");
     const timeoutId = window.setTimeout(() => {
-      const session: SavedSession = {
-        firstName,
-        fileName,
-        fields,
-        rows,
-        currentIndex,
-        savedAt: new Date().toISOString(),
-      };
-
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      const session = writeCurrentSession();
       setSaveStatus(`Saved ${new Date(session.savedAt).toLocaleTimeString([], {
         hour: "numeric",
         minute: "2-digit",
@@ -247,6 +238,30 @@ export default function CsvCoder() {
     }, 250);
 
     return () => window.clearTimeout(timeoutId);
+  }, [currentIndex, fields, fileName, firstName, hydrated, isNameConfirmed, rows]);
+
+  useEffect(() => {
+    if (!hydrated || !isNameConfirmed) {
+      return;
+    }
+
+    function saveBeforeExit() {
+      writeCurrentSession();
+    }
+
+    function saveWhenHidden() {
+      if (document.visibilityState === "hidden") {
+        writeCurrentSession();
+      }
+    }
+
+    window.addEventListener("pagehide", saveBeforeExit);
+    document.addEventListener("visibilitychange", saveWhenHidden);
+
+    return () => {
+      window.removeEventListener("pagehide", saveBeforeExit);
+      document.removeEventListener("visibilitychange", saveWhenHidden);
+    };
   }, [currentIndex, fields, fileName, firstName, hydrated, isNameConfirmed, rows]);
 
   const currentRow = rows[currentIndex];
@@ -271,6 +286,20 @@ export default function CsvCoder() {
     setNameInput(cleanedName);
     setIsNameConfirmed(true);
     setError("");
+  }
+
+  function writeCurrentSession() {
+    const session: SavedSession = {
+      firstName,
+      fileName,
+      fields,
+      rows,
+      currentIndex,
+      savedAt: new Date().toISOString(),
+    };
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    return session;
   }
 
   async function handleFileChange(event: Event) {
