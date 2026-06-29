@@ -37,6 +37,13 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
+test("browser mode does not show desktop window controls", async ({ page }) => {
+  await expect(page.locator("[data-desktop-topbar]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Minimize" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Maximize" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Close" })).toHaveCount(0);
+});
+
 test("codes rows, reviews completion, and exports with title-cased name", async ({
   page,
 }) => {

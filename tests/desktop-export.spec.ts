@@ -33,6 +33,9 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
       invoke: async (cmd: string, args: unknown) => {
         const testWindow = window as typeof window & { __desktopInvokes?: unknown[] };
         testWindow.__desktopInvokes = [...(testWindow.__desktopInvokes ?? []), { cmd, args }];
+        if (cmd === "plugin:window|is_maximized") {
+          return false;
+        }
         return null;
       },
       transformCallback: () => 1,
@@ -46,6 +49,10 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
   });
 
   await page.goto("/");
+  await expect(page.locator("[data-desktop-topbar]")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Minimize" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Maximize" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Close" })).toBeVisible();
   await page.getByLabel("First name").fill("nora");
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Select CSV file").setInputFiles(csvPath);
@@ -84,4 +91,22 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
   );
 
   expect(decorationCall).toBeUndefined();
+
+  await page.getByRole("button", { name: "Minimize" }).click();
+  await page.getByRole("button", { name: "Maximize" }).click();
+  await page.locator("[data-desktop-topbar]").dispatchEvent("mousedown", { detail: 1 });
+
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __desktopInvokes?: { cmd: string; args: unknown }[] })
+            .__desktopInvokes?.map((call) => call.cmd) ?? [],
+      ),
+    )
+    .toEqual(expect.arrayContaining([
+      "plugin:window|minimize",
+      "plugin:window|toggle_maximize",
+      "plugin:window|start_dragging",
+    ]));
 });

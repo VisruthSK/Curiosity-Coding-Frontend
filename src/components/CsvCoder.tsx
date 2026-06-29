@@ -7,6 +7,7 @@ import { ModalDialog } from "./CsvCoder/ModalDialog";
 import type { CsvRow, ModalState, SavedSession } from "./CsvCoder/types";
 import { BrandLabel, Button, FieldLabel, Icon, StatusPill, styles } from "./CsvCoder/ui";
 import { codingGroupLabels, codingOptions } from "../data/codingOptions";
+import { DesktopTopbar } from "./DesktopTopbar";
 import { DesktopUpdateNotice } from "./DesktopUpdateNotice";
 
 const STORAGE_KEY = "curiosity-coding-tool:v1";
@@ -272,6 +273,7 @@ export default function CsvCoder() {
     [rows],
   );
   const rowNumber = rows.length ? currentIndex + 1 : 0;
+  const isDesktop = hydrated && isTauriDesktop();
 
   function confirmName(event: Event) {
     event.preventDefault();
@@ -410,6 +412,19 @@ export default function CsvCoder() {
     setModal({ type: "rename", value: firstName });
   }
 
+  function openKeybindSettings() {
+    setShowKeybindSettings(true);
+    setKeybindSettingsClosing(false);
+  }
+
+  function closeKeybindSettings() {
+    setKeybindSettingsClosing(true);
+    setTimeout(() => {
+      setShowKeybindSettings(false);
+      setKeybindSettingsClosing(false);
+    }, 200);
+  }
+
   function confirmRename() {
     if (!modal || modal.type !== "rename") {
       return;
@@ -516,7 +531,17 @@ export default function CsvCoder() {
   if (!isNameConfirmed) {
     return (
       <>
-      <main className="app-shell px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
+      <DesktopTopbar
+        codedCount={0}
+        fileName={APP_TITLE}
+        isOverview={false}
+        onOpenKeybinds={openKeybindSettings}
+        onOpenReview={() => undefined}
+        onStartOver={() => undefined}
+        rowCount={0}
+        saveStatus={saveStatus}
+      />
+      <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`}>
         <section className="mx-auto flex h-full w-full max-w-[1800px] items-center justify-center">
           <div className={`${styles.card} w-full p-5 sm:max-w-lg sm:p-6 lg:p-8`}>
             <div className="mb-6 flex items-start justify-between gap-4">
@@ -556,7 +581,17 @@ export default function CsvCoder() {
   if (!rows.length) {
     return (
       <>
-      <main className="app-shell px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
+      <DesktopTopbar
+        codedCount={0}
+        fileName={fileName || "Choose CSV"}
+        isOverview={false}
+        onOpenKeybinds={openKeybindSettings}
+        onOpenReview={() => undefined}
+        onStartOver={() => setModal({ type: "start-over", target: "signin" })}
+        rowCount={0}
+        saveStatus={saveStatus}
+      />
+      <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`}>
         <section className="mx-auto flex h-full w-full max-w-[1800px] flex-col">
           <div className={`${styles.card} p-5 sm:p-6 lg:p-8`}>
           <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
@@ -617,9 +652,19 @@ export default function CsvCoder() {
 
   return (
     <>
-    <main className="app-shell px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:px-8">
+    <DesktopTopbar
+      codedCount={codedCount}
+      fileName={fileName}
+      isOverview={isOverview}
+      onOpenKeybinds={openKeybindSettings}
+      onOpenReview={() => setIsOverview(true)}
+      onStartOver={() => setModal({ type: "start-over", target: "csv" })}
+      rowCount={rows.length}
+      saveStatus={saveStatus}
+    />
+    <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:px-8`}>
       <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-3 sm:gap-4 xl:h-full xl:min-h-0">
-        <header className={`${styles.card} shrink-0 p-3 sm:p-4`}>
+        <header className={`${styles.card} shrink-0 p-3 sm:p-4 ${isDesktop ? "hidden" : ""}`}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -659,13 +704,9 @@ export default function CsvCoder() {
                   data-keybinds-toggle
                   onClick={() => {
                     if (showKeybindSettings) {
-                      setKeybindSettingsClosing(true);
-                      setTimeout(() => {
-                        setShowKeybindSettings(false);
-                        setKeybindSettingsClosing(false);
-                      }, 200);
+                      closeKeybindSettings();
                     } else {
-                      setShowKeybindSettings(true);
+                      openKeybindSettings();
                     }
                   }}
                   variant="secondarySmall"
@@ -687,11 +728,7 @@ export default function CsvCoder() {
                         resetKeybindConfig();
                       }}
                       onClose={() => {
-                        setKeybindSettingsClosing(true);
-                        setTimeout(() => {
-                          setShowKeybindSettings(false);
-                          setKeybindSettingsClosing(false);
-                        }, 200);
+                        closeKeybindSettings();
                       }}
                     />
                   </div>
@@ -723,6 +760,24 @@ export default function CsvCoder() {
             />
           </div>
         </header>
+
+        {isDesktop && showKeybindSettings ? (
+          <div className="fixed right-48 top-14 z-30">
+            <KeybindSettings
+              config={keybindConfig}
+              isClosing={keybindSettingsClosing}
+              onChange={(next) => {
+                setKeybindConfig(next);
+                writeKeybindConfig(next);
+              }}
+              onReset={() => {
+                setKeybindConfig(DEFAULT_KEYBINDS);
+                resetKeybindConfig();
+              }}
+              onClose={closeKeybindSettings}
+            />
+          </div>
+        ) : null}
 
         <div className="grid flex-1 gap-4 xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(400px,32vw)] xl:overflow-hidden">
           {isOverview ? (
@@ -923,9 +978,7 @@ export default function CsvCoder() {
                 <Icon name="chevronLeft" />
                 Previous
               </Button>
-              <div className="flex items-center justify-center text-xs font-semibold text-neutral-400 dark:text-neutral-600">
-                {isTauriDesktop() ? `v${__APP_VERSION__}` : null}
-              </div>
+              <div aria-hidden="true" />
               <Button onClick={goToNext} variant="primary">
                 Next
                 <Icon name="chevronRight" />

@@ -31,7 +31,12 @@ const iconPaths = {
   ],
   chevronLeft: [["path", { d: "m15 18-6-6 6-6" }]],
   chevronRight: [["path", { d: "m9 18 6-6-6-6" }]],
+  chevronDown: [["path", { d: "m6 9 6 6 6-6" }]],
   circle: [["circle", { cx: "12", cy: "12", r: "10" }]],
+  copy: [
+    ["rect", { x: "8", y: "8", width: "14", height: "14", rx: "2" }],
+    ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }],
+  ],
   download: [
     ["path", { d: "M12 15V3" }],
     ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }],
@@ -71,6 +76,24 @@ const iconPaths = {
   keyboard: [
     ["rect", { x: "2", y: "4", width: "20", height: "16", rx: "2" }],
     ["path", { d: "M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10" }],
+  ],
+  ellipsis: [
+    ["circle", { cx: "12", cy: "12", r: "1" }],
+    ["circle", { cx: "19", cy: "12", r: "1" }],
+    ["circle", { cx: "5", cy: "12", r: "1" }],
+  ],
+  lightbulb: [
+    ["path", { d: "M15 14c.2-1 .7-1.7 1.5-2.5A4.8 4.8 0 0 0 18 8 6 6 0 0 0 6 8c0 1.4.5 2.6 1.5 3.5.7.8 1.3 1.5 1.5 2.5" }],
+    ["path", { d: "M9 18h6" }],
+    ["path", { d: "M10 22h4" }],
+    ["path", { d: "M10 14h4" }],
+  ],
+  minus: [["path", { d: "M5 12h14" }]],
+  moon: [["path", { d: "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" }]],
+  square: [["rect", { x: "5", y: "5", width: "14", height: "14", rx: "2" }]],
+  x: [
+    ["path", { d: "M18 6 6 18" }],
+    ["path", { d: "m6 6 12 12" }],
   ],
 } as const;
 
