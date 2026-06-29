@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default permissions for the main Curiosity Coding window.",
+  "description": "Default permissions for the main Curiosity Coding Interface window.",
   "windows": ["main"],
   "permissions": [
     "core:default",

@@ -1,6 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Curiosity Coding Webtool">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Curiosity Coding Interface">
+  <!-- Lightbulb mark adapted from Lucide icons, ISC License: https://lucide.dev/license -->
   <rect width="512" height="512" rx="96" fill="#f8fafc"/>
-  <rect x="82" y="98" width="348" height="316" rx="34" fill="#ffffff" stroke="#1d4ed8" stroke-width="24"/>
-  <path d="M142 176h228M142 248h168M142 320h112" fill="none" stroke="#0f172a" stroke-linecap="round" stroke-width="28"/>
-  <path d="m330 318 34 34 68-86" fill="none" stroke="#059669" stroke-linecap="round" stroke-linejoin="round" stroke-width="30"/>
+  <circle cx="256" cy="256" r="166" fill="#ffffff" stroke="#1d4ed8" stroke-width="24"/>
+  <path d="M256 112a104 104 0 0 0-64 186c16 13 24 30 24 50h80c0-20 8-37 24-50a104 104 0 0 0-64-186Z" fill="none" stroke="#0f172a" stroke-linecap="round" stroke-linejoin="round" stroke-width="28"/>
+  <path d="M216 392h80M224 440h64M256 72v-24M368 120l18-18M144 120l-18-18" fill="none" stroke="#059669" stroke-linecap="round" stroke-linejoin="round" stroke-width="28"/>
 </svg>

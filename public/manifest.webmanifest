@@ -1,7 +1,7 @@
 {
-  "name": "Curiosity Coding Webtool",
+  "name": "Curiosity Coding Interface",
   "short_name": "Curiosity Coding",
-  "description": "Local CSV coding tool for Curiosity student responses.",
+  "description": "Local CSV coding interface for Curiosity student responses.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

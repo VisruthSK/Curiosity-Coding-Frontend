@@ -54,7 +54,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![export_csv])
         .run(tauri::generate_context!())
-        .expect("failed to run Curiosity Coding Webtool");
+        .expect("failed to run Curiosity Coding Interface");
 }
 
 #[cfg(test)]

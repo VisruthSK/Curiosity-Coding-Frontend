@@ -10,7 +10,7 @@ import { codingGroupLabels, codingOptions } from "../data/codingOptions";
 import { DesktopUpdateNotice } from "./DesktopUpdateNotice";
 
 const STORAGE_KEY = "curiosity-coding-tool:v1";
-const APP_TITLE = "Curiosity Coding Webtool";
+const APP_TITLE = "Curiosity Coding Interface";
 const LABEL_FIELD = "Label";
 const NOTES_FIELD = "Notes";
 const FLAG_FIELD = "Flag";

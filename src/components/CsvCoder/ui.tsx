@@ -126,7 +126,7 @@ export function Button({ children, className, type = "button", variant = "second
   );
 }
 
-export function BrandLabel({ label = "Curiosity Coding Webtool" }: { label?: string }) {
+export function BrandLabel({ label = "Curiosity Coding Interface" }: { label?: string }) {
   return <p className={styles.brand}>{label}</p>;
 }
 
