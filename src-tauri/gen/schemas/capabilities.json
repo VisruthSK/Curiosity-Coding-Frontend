@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Default permissions for the main Curiosity Coding window.","local":true,"windows":["main"],"permissions":["core:default","updater:default","process:allow-restart"]}}
+{"default":{"identifier":"default","description":"Default permissions for the main Curiosity Coding Interface window.","local":true,"windows":["main"],"permissions":["core:default","updater:default","process:allow-restart"]}}

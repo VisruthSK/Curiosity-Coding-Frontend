@@ -35,6 +35,13 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
         testWindow.__desktopInvokes = [...(testWindow.__desktopInvokes ?? []), { cmd, args }];
         return null;
       },
+      transformCallback: () => 1,
+      unregisterCallback: () => null,
+      metadata: {
+        currentWindow: {
+          label: "main",
+        },
+      },
     };
   });
 
@@ -44,6 +51,7 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
   await page.getByLabel("Select CSV file").setInputFiles(csvPath);
   await page.getByLabel("2b").check();
   await page.getByLabel("Notes").fill("Saved from desktop");
+  await expect(page.getByText("v0.1.0")).toBeVisible();
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Export CSV" }).click();
 
@@ -68,4 +76,12 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
       ].join("\n"),
     },
   });
+
+  const decorationCall = await page.evaluate(
+    () =>
+      (window as typeof window & { __desktopInvokes?: { cmd: string; args: unknown }[] })
+        .__desktopInvokes?.find((call) => call.cmd.includes("set_decorations")),
+  );
+
+  expect(decorationCall).toBeUndefined();
 });

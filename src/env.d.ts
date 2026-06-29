@@ -10,5 +10,12 @@ interface Window {
     invoke?: (cmd: string, args?: unknown, options?: unknown) => Promise<unknown>;
     transformCallback?: (...args: unknown[]) => unknown;
     unregisterCallback?: (...args: unknown[]) => unknown;
+    metadata?: {
+      currentWindow: {
+        label: string;
+      };
+    };
   };
 }
+
+declare const __APP_VERSION__: string;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
+import { relaunch as relaunchProcess } from "@tauri-apps/plugin-process";
 import { Button, Icon } from "./CsvCoder/ui";
 
 type UpdateStatus = "idle" | "checking" | "available" | "installing" | "installed" | "error";
@@ -79,8 +80,7 @@ export function DesktopUpdateNotice() {
   }
 
   async function relaunch() {
-    const process = await import("@tauri-apps/plugin-process");
-    await process.relaunch();
+    await relaunchProcess();
   }
 
   if (status === "idle" || status === "checking") {

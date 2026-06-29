@@ -923,7 +923,9 @@ export default function CsvCoder() {
                 <Icon name="chevronLeft" />
                 Previous
               </Button>
-              <div aria-hidden="true" />
+              <div className="flex items-center justify-center text-xs font-semibold text-neutral-400 dark:text-neutral-600">
+                {isTauriDesktop() ? `v${__APP_VERSION__}` : null}
+              </div>
               <Button onClick={goToNext} variant="primary">
                 Next
                 <Icon name="chevronRight" />

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -76,4 +76,39 @@ test("PWA reloads offline and preserves the CSV workflow", async ({ context, pag
     throw new Error("Expected exported CSV file path.");
   }
   expect(readFileSync(exportedPath, "utf8")).toContain("Offline note");
+});
+
+test("PWA registration is skipped inside the Tauri desktop runtime", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__TAURI_INTERNALS__ = {
+      invoke: async () => null,
+    };
+  });
+
+  await page.goto("/", { waitUntil: "load" });
+
+  await expect
+    .poll(async () => page.evaluate(() => navigator.serviceWorker.getRegistrations()))
+    .toHaveLength(0);
+});
+
+test("service worker install discovery sees the built first-load assets", () => {
+  const indexPath = join(process.cwd(), "dist", "index.html");
+  const serviceWorkerPath = join(process.cwd(), "dist", "sw.js");
+
+  test.skip(!existsSync(indexPath) || !existsSync(serviceWorkerPath), "Run pnpm build before this assertion.");
+
+  const html = readFileSync(indexPath, "utf8");
+  const serviceWorker = readFileSync(serviceWorkerPath, "utf8");
+  const discoveredAssets = Array.from(html.matchAll(/\b(?:src|href)="([^"]+)"/g))
+    .map((match) => match[1])
+    .filter((assetUrl) => assetUrl.startsWith("/") && !assetUrl.startsWith("//"));
+  const requiredFirstLoadAssets = discoveredAssets.filter((assetUrl) =>
+    /^\/(?:_astro\/|pwa-register\.js|theme\.js|manifest\.webmanifest)/.test(assetUrl),
+  );
+
+  expect(requiredFirstLoadAssets).not.toHaveLength(0);
+  expect(serviceWorker).toContain('html.matchAll(/\\b(?:src|href)="([^"]+)"/g)');
+  expect(serviceWorker).toContain("APP_SHELL");
+  expect(new Set(requiredFirstLoadAssets).size).toBe(requiredFirstLoadAssets.length);
 });
