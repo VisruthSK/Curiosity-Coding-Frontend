@@ -14,7 +14,8 @@
       "Bash(pnpm test:*)",
       "Edit(tests/**)",
       "Edit(./**)",
-      "Edit(src/components/CsvCoder/**)"
+      "Edit(src/components/CsvCoder/**)",
+      "Bash(npm test:*)"
     ]
   }
 }

@@ -174,6 +174,18 @@ export default function CsvCoder() {
   const [keybindSettingsClosing, setKeybindSettingsClosing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const questionSectionRef = useRef<HTMLElement | null>(null);
+  const saveSessionRef = useRef<() => SavedSession>(() => {
+    const session: SavedSession = {
+      firstName,
+      fileName,
+      fields,
+      rows,
+      currentIndex,
+      savedAt: new Date().toISOString(),
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    return session;
+  });
 
   useEffect(() => {
     setKeybindConfig(readKeybindConfig());
@@ -247,12 +259,12 @@ export default function CsvCoder() {
     }
 
     function saveBeforeExit() {
-      writeCurrentSession();
+      saveSessionRef.current();
     }
 
     function saveWhenHidden() {
       if (document.visibilityState === "hidden") {
-        writeCurrentSession();
+        saveSessionRef.current();
       }
     }
 
@@ -263,7 +275,7 @@ export default function CsvCoder() {
       window.removeEventListener("pagehide", saveBeforeExit);
       document.removeEventListener("visibilitychange", saveWhenHidden);
     };
-  }, [currentIndex, fields, fileName, firstName, hydrated, isNameConfirmed, rows]);
+  }, [hydrated, isNameConfirmed]);
 
   const currentRow = rows[currentIndex];
   const selectedCodes = useMemo(() => parseLabelValue(currentRow?.[LABEL_FIELD]), [currentRow]);
@@ -303,6 +315,7 @@ export default function CsvCoder() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     return session;
   }
+  saveSessionRef.current = writeCurrentSession;
 
   async function handleFileChange(event: Event) {
     const file = (event.currentTarget as HTMLInputElement).files?.[0];
@@ -539,7 +552,6 @@ export default function CsvCoder() {
         onOpenReview={() => undefined}
         onStartOver={() => undefined}
         rowCount={0}
-        saveStatus={saveStatus}
       />
       <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`}>
         <section className="mx-auto flex h-full w-full max-w-[1800px] items-center justify-center">
@@ -589,7 +601,6 @@ export default function CsvCoder() {
         onOpenReview={() => undefined}
         onStartOver={() => setModal({ type: "start-over", target: "signin" })}
         rowCount={0}
-        saveStatus={saveStatus}
       />
       <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`}>
         <section className="mx-auto flex h-full w-full max-w-[1800px] flex-col">
@@ -660,7 +671,6 @@ export default function CsvCoder() {
       onOpenReview={() => setIsOverview(true)}
       onStartOver={() => setModal({ type: "start-over", target: "csv" })}
       rowCount={rows.length}
-      saveStatus={saveStatus}
     />
     <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:px-8`}>
       <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-3 sm:gap-4 xl:h-full xl:min-h-0">
@@ -978,7 +988,9 @@ export default function CsvCoder() {
                 <Icon name="chevronLeft" />
                 Previous
               </Button>
-              <div aria-hidden="true" />
+              <div aria-hidden="true" className="text-center text-sm text-neutral-600 dark:text-neutral-400">
+                {saveStatus}
+              </div>
               <Button onClick={goToNext} variant="primary">
                 Next
                 <Icon name="chevronRight" />
