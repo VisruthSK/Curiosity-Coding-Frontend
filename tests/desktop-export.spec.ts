@@ -221,3 +221,36 @@ test("successful Tauri export persists exportedAt through autosave", async ({ pa
   // Start-next-CSV button should appear
   await expect(page.getByRole("button", { name: "Start next CSV" })).toBeVisible();
 });
+
+test("warns after reload when Tauri export was cancelled", async ({ page }) => {
+  const firstCsv = createCsvFile("cancel-reload.csv");
+  const secondCsv = createCsvFile("replacement-after-cancel.csv");
+
+  // export_csv returns false — user dismissed the save dialog
+  await bootDesktopSession(page, async () => false);
+  await loadAndCodeCsv(page, firstCsv);
+
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await page.waitForTimeout(300);
+
+  // Confirm cancel left exportedAt absent in localStorage
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const raw = window.localStorage.getItem("curiosity-coding-tool:v1");
+        return raw ? JSON.parse(raw).exportedAt ?? null : null;
+      }),
+    )
+    .toBeNull();
+
+  // Reload — session restores without exportedAt, so work is still "unexported"
+  await page.reload();
+
+  await expect(page.getByText("Can desktop export save?")).toBeVisible();
+
+  // Try to replace with a new CSV — must still warn about unexported work
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByRole("dialog")).toContainText(
+    "coded work that has not been exported",
+  );
+});

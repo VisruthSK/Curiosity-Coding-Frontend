@@ -28,7 +28,13 @@ function createCsvFixture(name: string, csv: string) {
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    window.localStorage.clear();
+    // Tests that need localStorage to survive a page.reload() set
+    // __test_preserve_ls in sessionStorage before reloading.
+    // sessionStorage persists through reload but is fresh for every new
+    // browser context, so this cannot leak between tests.
+    if (!window.sessionStorage.getItem("__test_preserve_ls")) {
+      window.localStorage.clear();
+    }
     Object.defineProperty(Math, "random", {
       configurable: true,
       value: () => 0.99,
@@ -652,4 +658,56 @@ test("warns when replacing if user toggles flag after export", async ({ page }) 
   // Try to load a second CSV — should show the replace dialog
   await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
   await expect(page.getByRole("dialog")).toContainText("coded work that has not been exported");
+});
+
+test("does not warn after reload when replacing a successfully exported CSV", async ({ page }) => {
+  const firstCsv = createCsvFile("first-reload-exported.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second-after-reload.csv", [
+    '2026-02-01,"Replacement question?",Second,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("grace");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  await page.getByRole("checkbox", { name: /2b/ }).check();
+
+  // Navigate to overview and export
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await page.getByRole("button", { name: "Export CSV" }).click();
+
+  // Confirm export succeeded: Start next CSV button appears
+  await expect(page.getByRole("button", { name: "Start next CSV" })).toBeVisible();
+
+  // Wait until autosave has persisted exportedAt to localStorage
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const raw = window.localStorage.getItem("curiosity-coding-tool:v1");
+        return raw ? JSON.parse(raw).exportedAt ?? null : null;
+      }),
+    )
+    .not.toBeNull();
+
+  // Signal the beforeEach initScript to preserve localStorage through the
+  // upcoming reload (sessionStorage survives reload; fresh per test context).
+  await page.evaluate(() =>
+    window.sessionStorage.setItem("__test_preserve_ls", "1"),
+  );
+
+  await page.reload();
+
+  // Session restores from localStorage with exportedAt intact.
+  // isOverview is not persisted, so the app opens on the question panel.
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Load second CSV — must NOT warn because exportedAt survived the reload
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByText("Replacement question?")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
