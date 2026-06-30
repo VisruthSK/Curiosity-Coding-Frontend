@@ -8,7 +8,15 @@ Download the latest release from the [Releases page](https://github.com/VisruthS
 
 ### macOS
 
-Pick the right `.dmg`:
+```bash
+curl -fsSL https://raw.githubusercontent.com/VisruthSK/Curiosity-Coding-Frontend/main/install-macos.sh | bash
+```
+
+The macOS build is unsigned. The script installs the right version for your Mac and applies the local unsigned-app fixes.
+
+#### Manual Installation
+
+Alternatively, you can manually install the app. Pick the right `.dmg`:
 
 * Apple Silicon: `Curiosity-Coding-Interface-macOS-Apple-Silicon.dmg`
 * Intel: `Curiosity-Coding-Interface-macOS-Intel.dmg`
@@ -18,15 +26,7 @@ To check your Mac type, open Apple menu -> About This Mac.
 * If it says `Chip: Apple M1`, `M2`, etc. use Apple Silicon.
 * If it says `Processor: Intel`, use Intel.
 
-Open the `.dmg`, then drag `Curiosity Coding Interface.app` into Applications.
-
-This macOS build is unsigned. If macOS says the app is damaged, run:
-
-```sh
-sudo xattr -dr com.apple.quarantine "/Applications/Curiosity Coding Interface.app"
-```
-
-If it still fails with a code-signature error, run:
+Open the `.dmg`, then drag `Curiosity Coding Interface.app` into Applications. If macOS says the app is damaged, run:
 
 ```sh
 sudo codesign --force --deep --sign - "/Applications/Curiosity Coding Interface.app"
