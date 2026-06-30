@@ -4,9 +4,12 @@ set -euo pipefail
 APP="Curiosity Coding Interface.app"
 DEST="/Applications/$APP"
 BASE="https://github.com/VisruthSK/Curiosity-Coding-Frontend/releases/latest/download"
-
 ARCH=$([[ "$(sysctl -n hw.optional.arm64 2>/dev/null || echo 0)" = 1 ]] && echo Apple-Silicon || echo Intel)
-DMG="Curiosity-Coding-Interface-macOS-$ARCH.dmg"
+VERSION=$(curl -fsSL https://api.github.com/repos/VisruthSK/Curiosity-Coding-Frontend/releases/latest |
+  sed -n 's/.*"tag_name": *"\(v[^"]*\)".*/\1/p' |
+  head -n 1)
+test -n "$VERSION" || { echo "Could not determine latest release version"; exit 1; }
+DMG="Curiosity-Coding-Interface-macOS-$ARCH-$VERSION.dmg"
 
 pgrep -x "${APP%.app}" >/dev/null && { echo "Quit ${APP%.app} first"; exit 1; }
 
