@@ -17,12 +17,15 @@ jobs:
         include:
           - platform: macos-15-intel
             args: --target x86_64-apple-darwin
+            assetName: macOS-Intel
+
           - platform: macos-15
             args: --target aarch64-apple-darwin
-          - platform: ubuntu-24.04
-            args: --bundles appimage,deb,rpm
+            assetName: macOS-Apple-Silicon
+
           - platform: windows-latest
             args: ""
+            assetName: Windows
 
     runs-on: ${{ matrix.platform }}
 
@@ -44,15 +47,9 @@ jobs:
           workspaces: |
             src-tauri -> target
 
-      - name: Install Linux system dependencies
-        if: matrix.platform == 'ubuntu-24.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
-
       - run: pnpm install --frozen-lockfile
 
-      - uses: tauri-apps/tauri-action@v0.6.2
+      - uses: tauri-apps/tauri-action@v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -61,4 +58,9 @@ jobs:
           releaseName: Curiosity Coding Interface ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('desktop test {0}', github.run_number) }}
           releaseDraft: ${{ !startsWith(github.ref, 'refs/tags/') }}
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          retryAttempts: 2
+          uploadUpdaterJson: true
+          uploadUpdaterSignatures: true
+          releaseAssetNamePattern: Curiosity-Coding-Interface-${{ matrix.assetName }}-v[version][ext]
           args: ${{ matrix.args }}
+
