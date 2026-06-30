@@ -9,21 +9,14 @@ export function parseCsvText(csvText: string) {
   }
 
   const parsed = csvParseRows(normalizedText);
-  if (parsed.length === 0) {
-    throw new Error("CSV is empty or missing headers.");
-  }
-
   const [header = [], ...dataRecords] = parsed;
 
-  if (header.length === 0) {
+  if (parsed.length === 0 || header.length === 0) {
     throw new Error("CSV is empty or missing headers.");
   }
 
   const seenHeaders = new Set<string>();
   for (const h of header) {
-    if (h === "") {
-      throw new Error("CSV contains blank header names.");
-    }
     if (h.trim() === "") {
       throw new Error("CSV contains blank header names.");
     }

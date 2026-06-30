@@ -20,15 +20,12 @@ import {
   clearSavedSession,
   formatName,
 } from "./CsvCoder/SessionStorage";
+import { isBlankOrNA, isTauriDesktop, parseLabelValue } from "./CsvCoder/utils";
 
 const APP_TITLE = "Curiosity Coding Interface";
 const LABEL_FIELD = "Label";
 const NOTES_FIELD = "Notes";
 const FLAG_FIELD = "Flag";
-
-function isBlankOrNA(value: unknown) {
-  return String(value ?? "").trim().toLowerCase() === "na" || String(value ?? "").trim() === "";
-}
 
 function hasUnexportedWork(rows: CsvRow[], exportedAt: string | null) {
   if (exportedAt) {
@@ -40,17 +37,6 @@ function hasUnexportedWork(rows: CsvRow[], exportedAt: string | null) {
       !isBlankOrNA(row[NOTES_FIELD]) ||
       String(row[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE",
   );
-}
-
-function parseLabelValue(value: string | undefined) {
-  if (isBlankOrNA(value)) {
-    return [];
-  }
-
-  return String(value)
-    .split(";")
-    .map((code) => code.trim().toLowerCase())
-    .filter(Boolean);
 }
 
 export default function CsvCoder() {
@@ -171,7 +157,7 @@ export default function CsvCoder() {
     [sessionState.rows],
   );
   const rowNumber = sessionState.rows.length ? sessionState.currentIndex + 1 : 0;
-  const isDesktop = hydrated && Boolean(window.__TAURI_INTERNALS__);
+  const isDesktop = hydrated && isTauriDesktop();
 
   function confirmName(event: Event) {
     event.preventDefault();
@@ -321,39 +307,42 @@ export default function CsvCoder() {
     );
   }
 
-  const modalElement = modal ? (
-    <ModalDialog
-      error={error}
-      modal={modal}
-      fileName={sessionState.fileName}
-      onCancel={() => {
-        setError("");
-        setModal(null);
-        setPendingFile(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-      }}
-      onConfirmRename={confirmRename}
-      onConfirmStartOver={confirmStartOver}
-      onConfirmReplaceCsv={confirmReplaceCsv}
-      onRenameInput={(value) => setModal({ type: "rename", value })}
-    />
-  ) : null;
+  // Derive Topbar props based on state
+  const topbarProps = useMemo(() => {
+    if (!isNameConfirmed) {
+      return {
+        codedCount: 0,
+        fileName: APP_TITLE,
+        isOverview: false,
+        onOpenReview: () => undefined,
+        onStartOver: () => undefined,
+        rowCount: 0,
+      };
+    }
+    if (!sessionState.rows.length) {
+      return {
+        codedCount: 0,
+        fileName: sessionState.fileName || "Choose CSV",
+        isOverview: false,
+        onOpenReview: () => undefined,
+        onStartOver: () => setModal({ type: "start-over", target: "signin" }),
+        rowCount: 0,
+      };
+    }
+    return {
+      codedCount,
+      fileName: sessionState.fileName,
+      isOverview: sessionState.isOverview,
+      onOpenReview: () => dispatch({ type: "set_overview", value: true }),
+      onStartOver: () => setModal({ type: "start-over", target: "csv" }),
+      rowCount: sessionState.rows.length,
+    };
+  }, [isNameConfirmed, sessionState.fileName, sessionState.rows.length, sessionState.isOverview, codedCount]);
 
-  if (!isNameConfirmed) {
-    return (
-      <>
-      <DesktopTopbar
-        codedCount={0}
-        fileName={APP_TITLE}
-        isOverview={false}
-        onOpenKeybinds={openKeybindSettings}
-        onOpenReview={() => undefined}
-        onStartOver={() => undefined}
-        rowCount={0}
-      />
-      <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`}>
+  // Render Inner Content
+  const mainContent = (() => {
+    if (!isNameConfirmed) {
+      return (
         <section className="mx-auto flex h-full w-full max-w-[1800px] items-center justify-center">
           <div className={`${styles.card} w-full p-5 sm:max-w-lg sm:p-6 lg:p-8`}>
             <div className="mb-6 flex items-start justify-between gap-4">
@@ -383,97 +372,58 @@ export default function CsvCoder() {
             </form>
           </div>
         </section>
-      </main>
-      {modalElement}
-      <DesktopUpdateNotice />
-      </>
-    );
-  }
+      );
+    }
 
-  if (!sessionState.rows.length) {
-    return (
-      <>
-      <DesktopTopbar
-        codedCount={0}
-        fileName={sessionState.fileName || "Choose CSV"}
-        isOverview={false}
-        onOpenKeybinds={openKeybindSettings}
-        onOpenReview={() => undefined}
-        onStartOver={() => setModal({ type: "start-over", target: "signin" })}
-        rowCount={0}
-      />
-      <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`}>
+    if (!sessionState.rows.length) {
+      return (
         <section className="mx-auto flex h-full w-full max-w-[1800px] flex-col">
           <div className={`${styles.card} p-5 sm:p-6 lg:p-8`}>
-          <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <BrandLabel label={APP_TITLE} />
-              <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
-                Choose CSV
-              </h1>
-              <button
-                className={`${styles.mutedLink} mt-2`}
-                onClick={openRenameModal}
-                type="button"
-              >
-                Coder: {firstName}
-              </button>
+            <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <BrandLabel label={APP_TITLE} />
+                <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
+                  Choose CSV
+                </h1>
+                <button
+                  className={`${styles.mutedLink} mt-2`}
+                  onClick={openRenameModal}
+                  type="button"
+                >
+                  Coder: {firstName}
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setModal({ type: "start-over", target: "signin" })}
+                  variant="secondarySmall"
+                >
+                  <Icon name="rotateCcw" size={16} />
+                  Start over
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => setModal({ type: "start-over", target: "signin" })}
-                variant="secondarySmall"
-              >
-                <Icon name="rotateCcw" size={16} />
-                Start over
-              </Button>
-            </div>
-          </div>
 
-          <div className="mt-6 flex flex-1 flex-col">
-            <label
-              className={`flex min-h-[42vh] w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 px-5 py-12 text-center dark:border-neutral-700 dark:bg-neutral-800 ${styles.interactiveSurface}`}
-              htmlFor="csv-upload"
-            >
-              <Icon className="mb-3 text-blue-700 dark:text-blue-300" name="upload" size={28} />
-              <span className="text-base font-semibold text-neutral-950 dark:text-neutral-50">Select CSV file</span>
-            </label>
-            {error ? <p className="mt-4 text-sm text-red-700 dark:text-red-400">{error}</p> : null}
-          </div>
+            <div className="mt-6 flex flex-1 flex-col">
+              <label
+                className={`flex min-h-[42vh] w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 px-5 py-12 text-center dark:border-neutral-700 dark:bg-neutral-800 ${styles.interactiveSurface}`}
+                htmlFor="csv-upload"
+              >
+                <Icon className="mb-3 text-blue-700 dark:text-blue-300" name="upload" size={28} />
+                <span className="text-base font-semibold text-neutral-950 dark:text-neutral-50">Select CSV file</span>
+              </label>
+              {error ? <p className="mt-4 text-sm text-red-700 dark:text-red-400">{error}</p> : null}
+            </div>
           </div>
         </section>
-      </main>
-      {modalElement}
-      <input
-        accept=".csv,text/csv"
-        className="sr-only"
-        id="csv-upload"
-        aria-label="Select CSV file"
-        onChange={handleFileChange}
-        ref={fileInputRef}
-        type="file"
-      />
-      <DesktopUpdateNotice />
-      </>
+      );
+    }
+
+    const detailFields = sessionState.fields.filter(
+      (field) => field !== LABEL_FIELD && field !== NOTES_FIELD && field !== FLAG_FIELD && field !== "__originalIndex",
     );
-  }
 
-  const detailFields = sessionState.fields.filter(
-    (field) => field !== LABEL_FIELD && field !== NOTES_FIELD && field !== FLAG_FIELD && field !== "__originalIndex",
-  );
-
-  return (
-    <>
-    <DesktopTopbar
-      codedCount={codedCount}
-      fileName={sessionState.fileName}
-      isOverview={sessionState.isOverview}
-      onOpenKeybinds={openKeybindSettings}
-      onOpenReview={() => dispatch({ type: "set_overview", value: true })}
-      onStartOver={() => setModal({ type: "start-over", target: "csv" })}
-      rowCount={sessionState.rows.length}
-    />
-    <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:px-8`}>
+    return (
       <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-3 sm:gap-4 xl:h-full xl:min-h-0">
         <header className={`${styles.card} shrink-0 p-3 sm:p-4 ${isDesktop ? "hidden" : ""}`}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -538,9 +488,7 @@ export default function CsvCoder() {
                         setKeybindConfig(DEFAULT_KEYBINDS);
                         resetKeybindConfig();
                       }}
-                      onClose={() => {
-                        closeKeybindSettings();
-                      }}
+                      onClose={closeKeybindSettings}
                     />
                   </div>
                 ) : null}
@@ -598,21 +546,21 @@ export default function CsvCoder() {
             />
           ) : (
             <>
-            <QuestionPanel
-              currentRow={currentRow}
-              detailFields={detailFields}
-              selectedCodes={selectedCodes}
-              isCurrentRowFlagged={isCurrentRowFlagged}
-              onToggleFlag={() => dispatch({ type: "toggle_flag" })}
-              questionSectionRef={questionSectionRef}
-              questionNumber={sessionState.currentIndex + 1}
-            />
-            <CodingPanel
-              currentRow={currentRow}
-              selectedCodes={selectedCodes}
-              onToggleCode={(code) => dispatch({ type: "toggle_code", code })}
-              onUpdateNotes={(value) => dispatch({ type: "update_notes", value })}
-            />
+              <QuestionPanel
+                currentRow={currentRow}
+                detailFields={detailFields}
+                selectedCodes={selectedCodes}
+                isCurrentRowFlagged={isCurrentRowFlagged}
+                onToggleFlag={() => dispatch({ type: "toggle_flag" })}
+                questionSectionRef={questionSectionRef}
+                questionNumber={sessionState.currentIndex + 1}
+              />
+              <CodingPanel
+                currentRow={currentRow}
+                selectedCodes={selectedCodes}
+                onToggleCode={(code) => dispatch({ type: "toggle_code", code })}
+                onUpdateNotes={(value) => dispatch({ type: "update_notes", value })}
+              />
             </>
           )}
         </div>
@@ -646,18 +594,58 @@ export default function CsvCoder() {
           )}
         </footer>
       </div>
-    </main>
-    {modalElement}
-    <input
-      accept=".csv,text/csv"
-      className="sr-only"
-      id="csv-upload"
-      aria-label="Select CSV file"
-      onChange={handleFileChange}
-      ref={fileInputRef}
-      type="file"
+    );
+  })();
+
+  const modalElement = modal ? (
+    <ModalDialog
+      error={error}
+      modal={modal}
+      fileName={sessionState.fileName}
+      onCancel={() => {
+        setError("");
+        setModal(null);
+        setPendingFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }}
+      onConfirmRename={confirmRename}
+      onConfirmStartOver={confirmStartOver}
+      onConfirmReplaceCsv={confirmReplaceCsv}
+      onRenameInput={(value) => setModal({ type: "rename", value })}
     />
-    <DesktopUpdateNotice />
+  ) : null;
+
+  const mainClassName = sessionState.rows.length
+    ? `${isDesktop ? "desktop-workspace" : "app-shell"} px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:px-8`
+    : `${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`;
+
+  return (
+    <>
+      <DesktopTopbar
+        codedCount={topbarProps.codedCount}
+        fileName={topbarProps.fileName}
+        isOverview={topbarProps.isOverview}
+        onOpenKeybinds={openKeybindSettings}
+        onOpenReview={topbarProps.onOpenReview}
+        onStartOver={topbarProps.onStartOver}
+        rowCount={topbarProps.rowCount}
+      />
+      <main className={mainClassName}>
+        {mainContent}
+      </main>
+      {modalElement}
+      <input
+        accept=".csv,text/csv"
+        className="sr-only"
+        id="csv-upload"
+        aria-label="Select CSV file"
+        onChange={handleFileChange}
+        ref={fileInputRef}
+        type="file"
+      />
+      <DesktopUpdateNotice />
     </>
   );
 }

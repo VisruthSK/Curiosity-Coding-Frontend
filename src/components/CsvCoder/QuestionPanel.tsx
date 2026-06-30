@@ -1,19 +1,24 @@
 import { Button, Icon, styles } from "./ui";
 import type { CsvRow } from "./types";
+import { isTauriDesktop } from "./utils";
 
 const RUBRIC_URL =
   "https://www.dropbox.com/scl/fi/hk484lt52g8u4j87q8wcg/RubricApril2026.xlsx";
 const INSTRUCTOR_DIARY_URL =
   "https://docs.google.com/spreadsheets/d/1OfLVEqSGIwWYakWB9QCMS1p0nSKU-8QfsL0Gb_YuN38/edit?usp=sharing";
 
-function isTauriDesktop() {
-  return Boolean(window.__TAURI_INTERNALS__);
+let tauriCorePromise: Promise<any> | null = null;
+function getTauriCore() {
+  if (!tauriCorePromise) {
+    tauriCorePromise = import("@tauri-apps/api/core");
+  }
+  return tauriCorePromise;
 }
 
 async function openExternalUrl(url: string) {
   if (isTauriDesktop()) {
     try {
-      const { invoke } = await import("@tauri-apps/api/core");
+      const { invoke } = await getTauriCore();
       await invoke("open_external_url", { url });
     } catch {
       window.open(url, "_blank", "noopener,noreferrer");

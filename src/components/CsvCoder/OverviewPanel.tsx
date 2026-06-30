@@ -1,13 +1,10 @@
 import { Icon, StatusPill, styles } from "./ui";
 import type { CsvRow } from "./types";
+import { isBlankOrNA } from "./utils";
 
 const LABEL_FIELD = "Label";
 const NOTES_FIELD = "Notes";
 const FLAG_FIELD = "Flag";
-
-function isBlankOrNA(value: unknown) {
-  return String(value ?? "").trim().toLowerCase() === "na" || String(value ?? "").trim() === "";
-}
 
 type OverviewPanelProps = {
   rows: CsvRow[];

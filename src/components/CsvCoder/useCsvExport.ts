@@ -2,14 +2,11 @@ import { useState } from "preact/hooks";
 import { formatCsv } from "./csv";
 import { formatName, normalizeRow } from "./SessionStorage";
 import type { CsvRow } from "./types";
+import { isBlankOrNA, isTauriDesktop } from "./utils";
 
 const LABEL_FIELD = "Label";
 const NOTES_FIELD = "Notes";
 const FLAG_FIELD = "Flag";
-
-function isTauriDesktop() {
-  return Boolean(window.__TAURI_INTERNALS__);
-}
 
 function getBaseName(fileName: string) {
   return fileName.replace(/\.[^/.]+$/, "");
@@ -62,11 +59,6 @@ export function useCsvExport(
       .map((row) => {
         // Normalize fields, ensuring only relevant fields are exported
         const nextRow = normalizeRow(row, fields);
-        
-        // Fallback default NA values
-        const isBlankOrNA = (val: unknown) =>
-          String(val ?? "").trim().toLowerCase() === "na" || String(val ?? "").trim() === "";
-
         nextRow[LABEL_FIELD] = isBlankOrNA(nextRow[LABEL_FIELD]) ? "NA" : nextRow[LABEL_FIELD];
         nextRow[NOTES_FIELD] = isBlankOrNA(nextRow[NOTES_FIELD]) ? "NA" : nextRow[NOTES_FIELD];
         nextRow[FLAG_FIELD] = isBlankOrNA(nextRow[FLAG_FIELD]) ? "NA" : nextRow[FLAG_FIELD];

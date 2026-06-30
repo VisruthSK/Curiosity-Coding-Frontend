@@ -12,11 +12,9 @@ export function formatName(value: string) {
 }
 
 export function normalizeRow(row: CsvRow, fields: string[]): CsvRow {
-  return fields.reduce<CsvRow>((nextRow, field) => {
-    const value = row[field];
-    nextRow[field] = value == null ? "" : String(value);
-    return nextRow;
-  }, {});
+  return Object.fromEntries(
+    fields.map((field) => [field, row[field] == null ? "" : String(row[field])])
+  );
 }
 
 export function ensureFlagField(fields: string[]) {

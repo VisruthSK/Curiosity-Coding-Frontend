@@ -1,6 +1,7 @@
 import { useReducer } from "preact/hooks";
 import type { CsvRow } from "./types";
 import { codingOptions } from "../../data/codingOptions";
+import { parseLabelValue } from "./utils";
 
 export interface SessionState {
   fileName: string;
@@ -40,20 +41,6 @@ export const initialSessionState: SessionState = {
   exportedAt: null,
   isOverview: false,
 };
-
-function isBlankOrNA(value: unknown) {
-  return String(value ?? "").trim().toLowerCase() === "na" || String(value ?? "").trim() === "";
-}
-
-function parseLabelValue(value: string | undefined) {
-  if (isBlankOrNA(value)) {
-    return [];
-  }
-  return String(value)
-    .split(";")
-    .map((code) => code.trim().toLowerCase())
-    .filter(Boolean);
-}
 
 export function sessionReducer(state: SessionState, action: SessionAction): SessionState {
   switch (action.type) {
