@@ -28,7 +28,13 @@ function createCsvFixture(name: string, csv: string) {
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    window.localStorage.clear();
+    // Tests that need localStorage to survive a page.reload() set
+    // __test_preserve_ls in sessionStorage before reloading.
+    // sessionStorage persists through reload but is fresh for every new
+    // browser context, so this cannot leak between tests.
+    if (!window.sessionStorage.getItem("__test_preserve_ls")) {
+      window.localStorage.clear();
+    }
     Object.defineProperty(Math, "random", {
       configurable: true,
       value: () => 0.99,
@@ -118,21 +124,26 @@ test("codes rows, reviews completion, and exports with title-cased name", async 
 });
 
 test("preserves CSV shape and escaped values on export", async ({ page }) => {
-  const fields = ["Date", "Question", "Student Coding", "Context", "Label", "Notes", "Follow Up"];
+  const fields = ["Date", "Question", "Student Coding", "Context", "Label", "Notes", "Follow Up", "ID"];
   const weirdNote = "Line one, with comma\nLine two with \"quotes\"";
   const csvPath = createCsvFixture(
     "weird survey.csv",
     [
       fields.join(","),
-      '2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,,,"keep ""as,is"""',
-      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged",
-      "2026-02-03,Left blank on purpose,,Section C,,,",
+      '2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,,,"keep ""as,is""",abc-123',
+      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged,def-456",
+      "2026-02-03,Left blank on purpose,,Section C,,,,ghi-789",
     ].join("\n"),
   );
 
   await page.getByLabel("First name").fill("zoe");
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+
+  // Assert ID values are NOT printed/rendered in the UI
+  await expect(page.getByText("abc-123")).toHaveCount(0);
+  await expect(page.getByText("def-456")).toHaveCount(0);
+  await expect(page.getByText("ghi-789")).toHaveCount(0);
 
   await page.getByLabel("2b").check();
   await page.getByLabel("2e").check();
@@ -160,9 +171,9 @@ test("preserves CSV shape and escaped values on export", async ({ page }) => {
   expect(readFileSync(exportedPath, "utf8")).toBe(
     [
       [...fields, "Flag"].join(","),
-      `2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,2b;2e,"${weirdNote.replaceAll('"', '""')}","keep ""as,is""",NA`,
-      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged,NA",
-      "2026-02-03,Left blank on purpose,,Section C,NA,NA,,NA",
+      `2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,2b;2e,"${weirdNote.replaceAll('"', '""')}","keep ""as,is""",abc-123,NA`,
+      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged,def-456,NA",
+      "2026-02-03,Left blank on purpose,,Section C,NA,NA,,ghi-789,NA",
     ].join("\n"),
   );
 });
@@ -273,7 +284,7 @@ test("renames coder and uses in-app start-over dialog", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Coder: Sam" })).toBeVisible();
 });
 
-test("Shift+Enter and Shift+Tab keybinds navigate questions", async ({ page }) => {
+test("Ctrl+Enter and Shift+Tab keybinds navigate questions", async ({ page }) => {
   const csvPath = createCsvFile("keybinds.csv", [
     '2026-01-12,"First question?",First,NA,NA',
     '2026-01-13,"Second question?",Second,NA,NA',
@@ -287,16 +298,16 @@ test("Shift+Enter and Shift+Tab keybinds navigate questions", async ({ page }) =
   // With random=0.99, order stays [First, Second, Third]; starts on First
   await expect(page.getByText("First question?")).toBeVisible();
 
-  // Press Shift+Enter to go to next question
-  await page.keyboard.press("Shift+Enter");
+  // Press Ctrl+Enter to go to next question
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByText("Second question?")).toBeVisible();
 
-  // Press Shift+Enter again
-  await page.keyboard.press("Shift+Enter");
+  // Press Ctrl+Enter again
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByText("Third question?")).toBeVisible();
 
-  // Press Shift+Enter at the last question — should go to overview
-  await page.keyboard.press("Shift+Enter");
+  // Press Ctrl+Enter at the last question — should go to overview
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
 
   // Press Shift+Tab from overview — should go back to last question
@@ -316,7 +327,7 @@ test("Shift+Enter and Shift+Tab keybinds navigate questions", async ({ page }) =
   await expect(page.getByText("First question?")).toBeVisible();
 });
 
-test("Shift+Enter and Shift+Tab work even when focused on notes textarea", async ({ page }) => {
+test("textarea takes priority over keybinds — newlines and no navigation", async ({ page }) => {
   const csvPath = createCsvFile("keybinds-notes.csv", [
     '2026-01-12,"First question?",First,NA,NA',
     '2026-01-13,"Second question?",Second,NA,NA',
@@ -328,15 +339,24 @@ test("Shift+Enter and Shift+Tab work even when focused on notes textarea", async
 
   await expect(page.getByText("First question?")).toBeVisible();
 
-  // Focus the notes textarea and press Shift+Enter — should navigate, not insert newline
+  // Focus the notes textarea and press Shift+Enter — should insert newline, NOT navigate
   await page.getByLabel("Notes").click();
   await page.keyboard.press("Shift+Enter");
-  await expect(page.getByText("Second question?")).toBeVisible();
-
-  // Focus the notes textarea and press Shift+Tab — should navigate back
-  await page.getByLabel("Notes").click();
-  await page.keyboard.press("Shift+Tab");
+  // Verify we're still on the first question (no navigation)
   await expect(page.getByText("First question?")).toBeVisible();
+  // Verify newline was inserted in the textarea
+  const notesValue = await page.getByLabel("Notes").inputValue();
+  expect(notesValue).toContain("\n");
+
+  // Press Ctrl+Enter while in textarea — should NOT navigate (textarea takes priority)
+  await page.getByLabel("Notes").click();
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Click outside textarea, then Ctrl+Enter should navigate
+  await page.getByText("First question?").click();
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByText("Second question?")).toBeVisible();
 });
 
 test("keybind settings popover rebinds shortcuts", async ({ page }) => {
@@ -370,8 +390,8 @@ test("keybind settings popover rebinds shortcuts", async ({ page }) => {
   await page.getByText("First question?").click();
   await expect(page.getByText("Keyboard shortcuts")).toHaveCount(0);
 
-  // Default Shift+Enter should no longer navigate
-  await page.keyboard.press("Shift+Enter");
+  // Default Ctrl+Enter should no longer navigate
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByText("First question?")).toBeVisible();
 
   // New Ctrl+ArrowDown should navigate to next
@@ -382,13 +402,13 @@ test("keybind settings popover rebinds shortcuts", async ({ page }) => {
   await page.getByRole("button", { name: "Keybinds" }).click();
   await expect(page.getByText("Keyboard shortcuts")).toBeVisible();
   await page.getByText("Reset to defaults").click();
-  await expect(page.getByRole("button", { name: "Rebind Next shortcut" })).toHaveText("Shift+Enter");
+  await expect(page.getByRole("button", { name: "Rebind Next shortcut" })).toHaveText("Ctrl+Enter");
 
   // Close popover by clicking outside
   await page.getByText("Second question?").click();
 
-  // Shift+Enter should work again after reset
-  await page.keyboard.press("Shift+Enter");
+  // Ctrl+Enter should work again after reset
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
 });
 
@@ -463,4 +483,231 @@ test("Shift+F toggles flag on current question", async ({ page }) => {
   // Press Shift+F again to unflag
   await page.keyboard.press("Shift+F");
   await expect(page.getByRole("button", { name: "Flag question" })).toBeVisible();
+});
+
+test("warns before replacing an active unexported CSV", async ({ page }) => {
+  const firstCsv = createCsvFile("first.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second.csv", [
+    '2026-02-01,"Replacement question?",Third,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("ada");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Code a row to create unexported work
+  await page.getByRole("checkbox", { name: /2b/ }).click();
+  await page.getByLabel("Notes").fill("important observation");
+
+  // Try to load a second CSV — should show the replace confirmation dialog
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByRole("dialog")).toContainText("coded work that has not been exported");
+  await expect(page.getByRole("button", { name: "Replace" })).toBeVisible();
+
+  // Cancel — should stay on the first CSV
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Try again and confirm replacement
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByRole("dialog")).toContainText("coded work that has not been exported");
+  await page.getByRole("button", { name: "Replace" }).click();
+  await expect(page.getByText("Replacement question?")).toBeVisible();
+});
+
+test("does not warn when replacing after export", async ({ page }) => {
+  const firstCsv = createCsvFile("first-exported.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second-after-export.csv", [
+    '2026-02-01,"Replacement question?",Third,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("grace");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Code a row
+  await page.getByRole("checkbox", { name: /2b/ }).click();
+
+  // Go to overview and export
+  await page.keyboard.press("Control+Enter");
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await page.getByRole("button", { name: "Export CSV" }).click();
+
+  // Wait for export to complete — the download triggers in browser mode
+  await page.waitForTimeout(500);
+
+  // Now load a second CSV — should NOT show the replace dialog
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByText("Replacement question?")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("warns when replacing if user edits label after export", async ({ page }) => {
+  const firstCsv = createCsvFile("first-exported-edit-label.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second-after-export-label.csv", [
+    '2026-02-01,"Replacement question?",Third,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("grace");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Code a row
+  await page.getByRole("checkbox", { name: /2b/ }).click();
+
+  // Go to overview and export
+  await page.keyboard.press("Control+Enter");
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await page.waitForTimeout(500);
+
+  // Now click on Question 1 in Overview to edit it again
+  await page.getByRole("button", { name: "Question 1" }).click();
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Edit label (check 2e as well)
+  await page.getByRole("checkbox", { name: /2e/ }).check();
+
+  // Now try to load a second CSV — should show the replace dialog since we have unexported edits!
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByRole("dialog")).toContainText("coded work that has not been exported");
+});
+
+test("warns when replacing if user edits notes after export", async ({ page }) => {
+  const firstCsv = createCsvFile("first-exported-edit-notes.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second-after-export-notes.csv", [
+    '2026-02-01,"Replacement question?",Third,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("grace");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Code a row
+  await page.getByRole("checkbox", { name: /2b/ }).click();
+
+  // Go to overview and export
+  await page.keyboard.press("Control+Enter");
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await page.waitForTimeout(500);
+
+  // Go back and edit notes
+  await page.getByRole("button", { name: "Question 1" }).click();
+  await expect(page.getByText("First question?")).toBeVisible();
+  await page.getByLabel("Notes").fill("Additional note after export");
+
+  // Try to load a second CSV — should show the replace dialog
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByRole("dialog")).toContainText("coded work that has not been exported");
+});
+
+test("warns when replacing if user toggles flag after export", async ({ page }) => {
+  const firstCsv = createCsvFile("first-exported-toggle-flag.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second-after-export-flag.csv", [
+    '2026-02-01,"Replacement question?",Third,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("grace");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Code a row
+  await page.getByRole("checkbox", { name: /2b/ }).click();
+
+  // Go to overview and export
+  await page.keyboard.press("Control+Enter");
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await page.waitForTimeout(500);
+
+  // Go back and toggle flag
+  await page.getByRole("button", { name: "Question 1" }).click();
+  await expect(page.getByText("First question?")).toBeVisible();
+  await page.getByRole("button", { name: "Flag question" }).click();
+
+  // Try to load a second CSV — should show the replace dialog
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByRole("dialog")).toContainText("coded work that has not been exported");
+});
+
+test("does not warn after reload when replacing a successfully exported CSV", async ({ page }) => {
+  const firstCsv = createCsvFile("first-reload-exported.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second-after-reload.csv", [
+    '2026-02-01,"Replacement question?",Second,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("grace");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  await page.getByRole("checkbox", { name: /2b/ }).check();
+
+  // Navigate to overview and export
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await page.getByRole("button", { name: "Export CSV" }).click();
+
+  // Confirm export succeeded: Start next CSV button appears
+  await expect(page.getByRole("button", { name: "Start next CSV" })).toBeVisible();
+
+  // Wait until autosave has persisted exportedAt to localStorage
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const raw = window.localStorage.getItem("curiosity-coding-tool:v1");
+        return raw ? JSON.parse(raw).exportedAt ?? null : null;
+      }),
+    )
+    .not.toBeNull();
+
+  // Signal the beforeEach initScript to preserve localStorage through the
+  // upcoming reload (sessionStorage survives reload; fresh per test context).
+  await page.evaluate(() =>
+    window.sessionStorage.setItem("__test_preserve_ls", "1"),
+  );
+
+  await page.reload();
+
+  // Session restores from localStorage with exportedAt intact.
+  // isOverview is not persisted, so the app opens on the question panel.
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Load second CSV — must NOT warn because exportedAt survived the reload
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByText("Replacement question?")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });

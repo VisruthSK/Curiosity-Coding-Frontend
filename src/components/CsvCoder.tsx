@@ -1,182 +1,39 @@
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { formatCsv, parseCsvText } from "./CsvCoder/csv";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { KeybindSettings } from "./CsvCoder/KeybindSettings";
 import { DEFAULT_KEYBINDS, keybindMatches, readKeybindConfig, resetKeybindConfig, writeKeybindConfig } from "./CsvCoder/keybinds";
 import type { KeybindConfig } from "./CsvCoder/keybinds";
 import { ModalDialog } from "./CsvCoder/ModalDialog";
-import type { CsvRow, ModalState, SavedSession } from "./CsvCoder/types";
-import { BrandLabel, Button, FieldLabel, Icon, StatusPill, styles } from "./CsvCoder/ui";
-import { codingGroupLabels, codingOptions } from "../data/codingOptions";
+import type { CsvRow, ModalState } from "./CsvCoder/types";
+import { BrandLabel, Button, FieldLabel, Icon, styles } from "./CsvCoder/ui";
 import { DesktopTopbar } from "./DesktopTopbar";
 import { DesktopUpdateNotice } from "./DesktopUpdateNotice";
 
-const STORAGE_KEY = "curiosity-coding-tool:v1";
+import { useCodingSession } from "./CsvCoder/useCodingSession";
+import { useAutosave } from "./CsvCoder/useAutosave";
+import { useCsvImport } from "./CsvCoder/useCsvImport";
+import { useCsvExport } from "./CsvCoder/useCsvExport";
+import { CodingPanel } from "./CsvCoder/CodingPanel";
+import { QuestionPanel } from "./CsvCoder/QuestionPanel";
+import { OverviewPanel } from "./CsvCoder/OverviewPanel";
+import {
+  readSavedSession,
+  clearSavedSession,
+  formatName,
+} from "./CsvCoder/SessionStorage";
+import { isBlankOrNA, isTauriDesktop, parseLabelValue, LABEL_FIELD, NOTES_FIELD, FLAG_FIELD } from "./CsvCoder/utils";
+
 const APP_TITLE = "Curiosity Coding Interface";
-const LABEL_FIELD = "Label";
-const NOTES_FIELD = "Notes";
-const FLAG_FIELD = "Flag";
-const RUBRIC_URL =
-  "https://www.dropbox.com/scl/fi/hk484lt52g8u4j87q8wcg/RubricApril2026.xlsx";
-const INSTRUCTOR_DIARY_URL =
-  "https://docs.google.com/spreadsheets/d/1OfLVEqSGIwWYakWB9QCMS1p0nSKU-8QfsL0Gb_YuN38/edit?usp=sharing";
 
-const groupOrder = ["1", "2", "3", "0"] as const;
-const codingOptionsByGroup = codingOptions.reduce<
-  Record<(typeof groupOrder)[number], typeof codingOptions>
->(
-  (groups, option) => {
-    groups[option.group].push(option);
-    return groups;
-  },
-  { "0": [], "1": [], "2": [], "3": [] },
-);
-
-function isBlankOrNA(value: unknown) {
-  return String(value ?? "").trim().toLowerCase() === "na" || String(value ?? "").trim() === "";
-}
-
-function parseLabelValue(value: string | undefined) {
-  if (isBlankOrNA(value)) {
-    return [];
+function hasUnexportedWork(rows: CsvRow[], exportedAt: string | null) {
+  if (exportedAt) {
+    return false;
   }
-
-  return String(value)
-    .split(";")
-    .map((code) => code.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function getBaseName(fileName: string) {
-  return fileName.replace(/\.[^/.]+$/, "");
-}
-
-function getExportName(fileName: string, firstName: string) {
-  const baseName = getBaseName(fileName).trim() || "coded-data";
-  const safeFirstName = formatName(firstName).replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_");
-  return `${baseName} ${safeFirstName}.csv`;
-}
-
-function formatName(value: string) {
-  return value
-    .trim()
-    .replace(/\s+/g, " ")
-    .toLowerCase()
-    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
-}
-
-function normalizeRow(row: CsvRow, fields: string[]) {
-  return fields.reduce<CsvRow>((nextRow, field) => {
-    const value = row[field];
-    nextRow[field] = value == null ? "" : String(value);
-    return nextRow;
-  }, {});
-}
-
-function ensureFlagField(fields: string[]) {
-  return fields.includes(FLAG_FIELD) ? fields : [...fields, FLAG_FIELD];
-}
-
-function randomizeRows(rowsToRandomize: CsvRow[]) {
-  const nextRows = [...rowsToRandomize];
-
-  for (let index = nextRows.length - 1; index > 0; index -= 1) {
-    const randomIndex = Math.floor(Math.random() * (index + 1));
-    [nextRows[index], nextRows[randomIndex]] = [nextRows[randomIndex], nextRows[index]];
-  }
-
-  return nextRows;
-}
-
-function isCsvRow(value: unknown): value is CsvRow {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
-    Object.values(value).every((fieldValue) => typeof fieldValue === "string")
+  return rows.some(
+    (row) =>
+      !isBlankOrNA(row[LABEL_FIELD]) ||
+      !isBlankOrNA(row[NOTES_FIELD]) ||
+      String(row[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE",
   );
-}
-
-function readSavedSession(): SavedSession | null {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<SavedSession>;
-    if (
-      typeof parsed.firstName !== "string" ||
-      typeof parsed.fileName !== "string" ||
-      !Array.isArray(parsed.fields) ||
-      !parsed.fields.every((field) => typeof field === "string") ||
-      !Array.isArray(parsed.rows) ||
-      !parsed.rows.every(isCsvRow)
-    ) {
-      return null;
-    }
-
-    const fields = ensureFlagField(parsed.fields);
-
-    return {
-      firstName: formatName(parsed.firstName),
-      fileName: parsed.fileName,
-      fields,
-      rows: parsed.rows.map((row) => normalizeRow(row, fields)),
-      currentIndex:
-        typeof parsed.currentIndex === "number" && Number.isFinite(parsed.currentIndex)
-          ? parsed.currentIndex
-          : 0,
-      savedAt: typeof parsed.savedAt === "string" ? parsed.savedAt : new Date().toISOString(),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function isTauriDesktop() {
-  return Boolean(window.__TAURI_INTERNALS__);
-}
-
-async function openExternalUrl(url: string) {
-  if (isTauriDesktop()) {
-    try {
-      const { invoke } = await import("@tauri-apps/api/core");
-      await invoke("open_external_url", { url });
-    } catch {
-      // Fallback to window.open if Tauri invoke fails
-      window.open(url, "_blank", "noopener,noreferrer");
-    }
-    return;
-  }
-  window.open(url, "_blank", "noopener,noreferrer");
-}
-
-function openExternalLink(event: MouseEvent, url: string) {
-  if (!isTauriDesktop()) {
-    return;
-  }
-
-  event.preventDefault();
-  void openExternalUrl(url);
-}
-
-async function writeDownload(content: string, fileName: string) {
-  if (isTauriDesktop()) {
-    const { invoke } = await import("@tauri-apps/api/core");
-    await invoke("export_csv", { fileName, content });
-    return;
-  }
-
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 export default function CsvCoder() {
@@ -184,61 +41,87 @@ export default function CsvCoder() {
   const [firstName, setFirstName] = useState("");
   const [nameInput, setNameInput] = useState("");
   const [isNameConfirmed, setIsNameConfirmed] = useState(false);
-  const [fileName, setFileName] = useState("");
-  const [fields, setFields] = useState<string[]>([]);
-  const [rows, setRows] = useState<CsvRow[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isOverview, setIsOverview] = useState(false);
-  const [error, setError] = useState("");
   const [saveStatus, setSaveStatus] = useState("Not saved");
   const [modal, setModal] = useState<ModalState>(null);
   const [keybindConfig, setKeybindConfig] = useState<KeybindConfig>(DEFAULT_KEYBINDS);
   const [showKeybindSettings, setShowKeybindSettings] = useState(false);
   const [keybindSettingsClosing, setKeybindSettingsClosing] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const questionSectionRef = useRef<HTMLElement | null>(null);
-  const saveSessionRef = useRef<() => SavedSession>(() => {
-    const session: SavedSession = {
-      firstName,
-      fileName,
-      fields,
-      rows,
-      currentIndex,
-      savedAt: new Date().toISOString(),
-    };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    return session;
-  });
+
+  const [sessionState, dispatch] = useCodingSession();
+
+  // Wire up autosave
+  useAutosave(firstName, isNameConfirmed, sessionState, setSaveStatus);
+
+  // Wire up Csv import
+  const { error: importError, setError: setImportError, loadCsvText } = useCsvImport(
+    (fileName, fields, rows) => {
+      dispatch({ type: "load_csv", fileName, fields, rows });
+    }
+  );
+
+  // Wire up Csv export
+  const { error: exportError, setError: setExportError, exportCsv } = useCsvExport(
+    sessionState.fileName,
+    firstName,
+    sessionState.fields,
+    sessionState.rows,
+    (timestamp) => {
+      dispatch({ type: "set_exported", timestamp });
+    }
+  );
+
+  const error = importError || exportError;
+  const setError = (msg: string) => {
+    setImportError(msg);
+    setExportError(msg);
+  };
 
   useEffect(() => {
     setKeybindConfig(readKeybindConfig());
   }, []);
 
+  // Keyboard navigation
   useEffect(() => {
-    if (!rows.length || modal) {
+    if (!sessionState.rows.length || modal) {
       return;
     }
 
     function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement;
+      const isEditing = target.isContentEditable || 
+        target.tagName === "TEXTAREA" || 
+        (target.tagName === "INPUT" && (target as HTMLInputElement).type !== "checkbox" && (target as HTMLInputElement).type !== "radio" && (target as HTMLInputElement).type !== "button" && (target as HTMLInputElement).type !== "submit");
+
+      if (isEditing) {
+        return;
+      }
+
       if (keybindMatches(keybindConfig.next, event)) {
         event.preventDefault();
-        goToNext();
+        dispatch({ type: "go_next" });
+        scrollToQuestionOnMobile();
       } else if (keybindMatches(keybindConfig.previous, event)) {
         event.preventDefault();
-        goToPrevious();
+        dispatch({ type: "go_previous" });
+        scrollToQuestionOnMobile();
       } else if (keybindMatches(keybindConfig.review, event)) {
         event.preventDefault();
-        setIsOverview((prev) => !prev);
-      } else if (!isOverview && keybindMatches(keybindConfig.flag, event)) {
+        dispatch({ type: "toggle_overview" });
+      } else if (!sessionState.isOverview && keybindMatches(keybindConfig.flag, event)) {
         event.preventDefault();
-        toggleCurrentRowFlag();
+        dispatch({ type: "toggle_flag" });
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [rows.length, modal, currentIndex, isOverview, keybindConfig]);
+  }, [sessionState.rows.length, modal, sessionState.isOverview, keybindConfig]);
 
+  // Load saved session on mount
   useEffect(() => {
     const saved = readSavedSession();
 
@@ -246,10 +129,14 @@ export default function CsvCoder() {
       setFirstName(saved.firstName);
       setNameInput(saved.firstName);
       setIsNameConfirmed(Boolean(saved.firstName));
-      setFileName(saved.fileName);
-      setFields(saved.fields);
-      setRows(saved.rows);
-      setCurrentIndex(Math.min(Math.max(saved.currentIndex, 0), Math.max(saved.rows.length - 1, 0)));
+      dispatch({
+        type: "load_session",
+        fileName: saved.fileName,
+        fields: saved.fields,
+        rows: saved.rows,
+        currentIndex: Math.min(Math.max(saved.currentIndex, 0), Math.max(saved.rows.length - 1, 0)),
+        exportedAt: saved.exportedAt ?? null,
+      });
       setSaveStatus(`Saved ${new Date(saved.savedAt).toLocaleTimeString([], {
         hour: "numeric",
         minute: "2-digit",
@@ -259,58 +146,17 @@ export default function CsvCoder() {
     setHydrated(true);
   }, []);
 
-  useEffect(() => {
-    if (!hydrated || !isNameConfirmed) {
-      return;
-    }
-
-    setSaveStatus("Saving...");
-    const timeoutId = window.setTimeout(() => {
-      const session = writeCurrentSession();
-      setSaveStatus(`Saved ${new Date(session.savedAt).toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit",
-      })}`);
-    }, 250);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [currentIndex, fields, fileName, firstName, hydrated, isNameConfirmed, rows]);
-
-  useEffect(() => {
-    if (!hydrated || !isNameConfirmed) {
-      return;
-    }
-
-    function saveBeforeExit() {
-      saveSessionRef.current();
-    }
-
-    function saveWhenHidden() {
-      if (document.visibilityState === "hidden") {
-        saveSessionRef.current();
-      }
-    }
-
-    window.addEventListener("pagehide", saveBeforeExit);
-    document.addEventListener("visibilitychange", saveWhenHidden);
-
-    return () => {
-      window.removeEventListener("pagehide", saveBeforeExit);
-      document.removeEventListener("visibilitychange", saveWhenHidden);
-    };
-  }, [hydrated, isNameConfirmed]);
-
-  const currentRow = rows[currentIndex];
+  const currentRow = sessionState.rows[sessionState.currentIndex];
   const selectedCodes = useMemo(() => parseLabelValue(currentRow?.[LABEL_FIELD]), [currentRow]);
   const isCurrentRowFlagged = String(currentRow?.[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE";
   const codedCount = useMemo(
-    () => rows.filter((row) => !isBlankOrNA(row[LABEL_FIELD])).length,
-    [rows],
+    () => sessionState.rows.filter((row) => !isBlankOrNA(row[LABEL_FIELD])).length,
+    [sessionState.rows],
   );
-  const rowNumber = rows.length ? currentIndex + 1 : 0;
+  const rowNumber = sessionState.rows.length ? sessionState.currentIndex + 1 : 0;
   const isDesktop = hydrated && isTauriDesktop();
 
-  function confirmName(event: Event) {
+  const confirmName = useCallback((event: Event) => {
     event.preventDefault();
     const cleanedName = formatName(nameInput);
 
@@ -323,91 +169,30 @@ export default function CsvCoder() {
     setNameInput(cleanedName);
     setIsNameConfirmed(true);
     setError("");
-  }
+  }, [nameInput]);
 
-  function writeCurrentSession() {
-    const session: SavedSession = {
-      firstName,
-      fileName,
-      fields,
-      rows,
-      currentIndex,
-      savedAt: new Date().toISOString(),
-    };
+  const loadCsvFile = useCallback(async (file: File) => {
+    setError("");
+    const text = await file.text();
+    loadCsvText(text, file.name);
+  }, [loadCsvText]);
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    return session;
-  }
-  saveSessionRef.current = writeCurrentSession;
-
-  async function handleFileChange(event: Event) {
+  const handleFileChange = useCallback(async (event: Event) => {
     const file = (event.currentTarget as HTMLInputElement).files?.[0];
     if (!file) {
       return;
     }
 
-    setError("");
-
-    try {
-      const { fields: parsedFields, rows: parsedRows } = parseCsvText(await file.text());
-
-      if (!parsedFields.includes(LABEL_FIELD) || !parsedFields.includes(NOTES_FIELD)) {
-        setError("CSV must include Label and Notes columns.");
-        return;
-      }
-
-      if (!parsedRows.length) {
-        setError("CSV did not contain any rows to code.");
-        return;
-      }
-
-      const nextFields = ensureFlagField(parsedFields);
-
-      setFileName(file.name);
-      setFields(nextFields);
-      setRows(randomizeRows(parsedRows.map((row) => normalizeRow(row, nextFields))));
-      setCurrentIndex(0);
-      setIsOverview(false);
-    } catch (parseError) {
-      setError(parseError instanceof Error ? parseError.message : "CSV could not be parsed.");
+    if (hasUnexportedWork(sessionState.rows, sessionState.exportedAt)) {
+      setPendingFile(file);
+      setModal({ type: "replace-csv", fileName: file.name });
+      return;
     }
-  }
 
-  function updateCurrentRow(field: string, value: string) {
-    setRows((previousRows) =>
-      previousRows.map((row, index) =>
-        index === currentIndex
-          ? {
-              ...row,
-              [field]: value,
-            }
-          : row,
-      ),
-    );
-  }
+    await loadCsvFile(file);
+  }, [sessionState.rows, sessionState.exportedAt, loadCsvFile]);
 
-  function toggleCode(code: string) {
-    const nextCodes = selectedCodes.includes(code)
-      ? selectedCodes.filter((selectedCode) => selectedCode !== code)
-      : [...selectedCodes, code];
-    const sortedCodes = codingOptions
-      .map((option) => option.code)
-      .filter((optionCode) => nextCodes.includes(optionCode));
-
-    updateCurrentRow(LABEL_FIELD, sortedCodes.length ? sortedCodes.join(";") : "NA");
-  }
-
-  function toggleCurrentRowFlag() {
-    setRows((previousRows) =>
-      previousRows.map((row, index) => {
-        if (index !== currentIndex) return row;
-        const isFlagged = String(row[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE";
-        return { ...row, [FLAG_FIELD]: isFlagged ? "NA" : "TRUE" };
-      }),
-    );
-  }
-
-  function scrollToQuestionOnMobile() {
+  const scrollToQuestionOnMobile = useCallback(() => {
     if (!window.matchMedia("(max-width: 767px)").matches) {
       return;
     }
@@ -415,53 +200,40 @@ export default function CsvCoder() {
     window.requestAnimationFrame(() => {
       questionSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
     });
-  }
+  }, []);
 
-  function goToPrevious() {
-    if (isOverview) {
-      setCurrentIndex(rows.length - 1);
-      setIsOverview(false);
-      scrollToQuestionOnMobile();
-      return;
-    }
-
-    setCurrentIndex((index) => Math.max(index - 1, 0));
+  const goToPrevious = useCallback(() => {
+    dispatch({ type: "go_previous" });
     scrollToQuestionOnMobile();
-  }
+  }, [dispatch, scrollToQuestionOnMobile]);
 
-  function goToNext() {
-    if (currentIndex >= rows.length - 1) {
-      setIsOverview(true);
-      return;
-    }
-
-    setCurrentIndex((index) => Math.min(index + 1, rows.length - 1));
+  const goToNext = useCallback(() => {
+    dispatch({ type: "go_next" });
     scrollToQuestionOnMobile();
-  }
+  }, [dispatch, scrollToQuestionOnMobile]);
 
-  function openRow(index: number) {
-    setCurrentIndex(index);
-    setIsOverview(false);
-  }
+  const openRow = useCallback((index: number) => {
+    dispatch({ type: "open_row", index });
+  }, [dispatch]);
 
-  function openRenameModal() {
+  const openRenameModal = useCallback(() => {
     setModal({ type: "rename", value: firstName });
-  }
+  }, [firstName]);
 
-  function openKeybindSettings() {
+  const openKeybindSettings = useCallback(() => {
     setShowKeybindSettings(true);
     setKeybindSettingsClosing(false);
-  }
+  }, []);
 
-  function closeKeybindSettings() {
+  const closeKeybindSettings = useCallback(() => {
     setKeybindSettingsClosing(true);
     setTimeout(() => {
       setShowKeybindSettings(false);
       setKeybindSettingsClosing(false);
     }, 200);
-  }
+  }, []);
 
-  function confirmRename() {
+  const confirmRename = useCallback(() => {
     if (!modal || modal.type !== "rename") {
       return;
     }
@@ -477,30 +249,27 @@ export default function CsvCoder() {
     setNameInput(nextName);
     setError("");
     setModal(null);
-  }
+  }, [modal]);
 
-  function clearCurrentCsv() {
-    window.localStorage.removeItem(STORAGE_KEY);
-    setFileName("");
-    setFields([]);
-    setRows([]);
-    setCurrentIndex(0);
-    setIsOverview(false);
+  const clearCurrentCsv = useCallback(() => {
+    clearSavedSession();
+    dispatch({ type: "clear" });
     setError("");
     setSaveStatus("Not saved");
+    setPendingFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  }
+  }, [dispatch]);
 
-  function returnToSignin() {
+  const returnToSignin = useCallback(() => {
     clearCurrentCsv();
     setFirstName("");
     setNameInput("");
     setIsNameConfirmed(false);
-  }
+  }, [clearCurrentCsv]);
 
-  function confirmStartOver() {
+  const confirmStartOver = useCallback(() => {
     if (!modal || modal.type !== "start-over") {
       return;
     }
@@ -512,33 +281,50 @@ export default function CsvCoder() {
     }
 
     setModal(null);
-  }
+  }, [modal, returnToSignin, clearCurrentCsv]);
 
-  async function exportCsv() {
-    const exportRows = rows.map((row) => {
-      const nextRow = normalizeRow(row, fields);
-      nextRow[LABEL_FIELD] = isBlankOrNA(nextRow[LABEL_FIELD]) ? "NA" : nextRow[LABEL_FIELD];
-      nextRow[NOTES_FIELD] = isBlankOrNA(nextRow[NOTES_FIELD]) ? "NA" : nextRow[NOTES_FIELD];
-      nextRow[FLAG_FIELD] = isBlankOrNA(nextRow[FLAG_FIELD]) ? "NA" : nextRow[FLAG_FIELD];
-      return nextRow;
-    });
-    const csv = formatCsv(exportRows, fields);
-
-    try {
-      await writeDownload(csv, getExportName(fileName, firstName));
-      setError("");
-    } catch (exportError) {
-      setError(exportError instanceof Error ? exportError.message : "CSV export failed.");
+  const confirmReplaceCsv = useCallback(async () => {
+    if (!modal || modal.type !== "replace-csv" || !pendingFile) {
+      return;
     }
-  }
 
-  function keepNotesVisible(event: Event) {
-    const notes = event.currentTarget as HTMLTextAreaElement;
+    setModal(null);
+    const file = pendingFile;
+    setPendingFile(null);
+    await loadCsvFile(file);
+  }, [modal, pendingFile, loadCsvFile]);
 
-    window.setTimeout(() => {
-      notes.scrollIntoView({ block: "center", behavior: "smooth" });
-    }, 150);
-  }
+  // Derive Topbar props based on state
+  const topbarProps = useMemo(() => {
+    if (!isNameConfirmed) {
+      return {
+        codedCount: 0,
+        fileName: APP_TITLE,
+        isOverview: false,
+        onOpenReview: () => undefined,
+        onStartOver: () => undefined,
+        rowCount: 0,
+      };
+    }
+    if (!sessionState.rows.length) {
+      return {
+        codedCount: 0,
+        fileName: sessionState.fileName || "Choose CSV",
+        isOverview: false,
+        onOpenReview: () => undefined,
+        onStartOver: () => setModal({ type: "start-over", target: "signin" }),
+        rowCount: 0,
+      };
+    }
+    return {
+      codedCount,
+      fileName: sessionState.fileName,
+      isOverview: sessionState.isOverview,
+      onOpenReview: () => dispatch({ type: "set_overview", value: true }),
+      onStartOver: () => setModal({ type: "start-over", target: "csv" }),
+      rowCount: sessionState.rows.length,
+    };
+  }, [isNameConfirmed, sessionState.fileName, sessionState.rows.length, sessionState.isOverview, codedCount]);
 
   if (!hydrated) {
     return (
@@ -550,33 +336,10 @@ export default function CsvCoder() {
     );
   }
 
-  const modalElement = modal ? (
-    <ModalDialog
-      error={error}
-      modal={modal}
-      onCancel={() => {
-        setError("");
-        setModal(null);
-      }}
-      onConfirmRename={confirmRename}
-      onConfirmStartOver={confirmStartOver}
-      onRenameInput={(value) => setModal({ type: "rename", value })}
-    />
-  ) : null;
-
-  if (!isNameConfirmed) {
-    return (
-      <>
-      <DesktopTopbar
-        codedCount={0}
-        fileName={APP_TITLE}
-        isOverview={false}
-        onOpenKeybinds={openKeybindSettings}
-        onOpenReview={() => undefined}
-        onStartOver={() => undefined}
-        rowCount={0}
-      />
-      <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`}>
+  // Render Inner Content
+  const mainContent = (() => {
+    if (!isNameConfirmed) {
+      return (
         <section className="mx-auto flex h-full w-full max-w-[1800px] items-center justify-center">
           <div className={`${styles.card} w-full p-5 sm:max-w-lg sm:p-6 lg:p-8`}>
             <div className="mb-6 flex items-start justify-between gap-4">
@@ -606,103 +369,69 @@ export default function CsvCoder() {
             </form>
           </div>
         </section>
-      </main>
-      {modalElement}
-      <DesktopUpdateNotice />
-      </>
-    );
-  }
+      );
+    }
 
-  if (!rows.length) {
-    return (
-      <>
-      <DesktopTopbar
-        codedCount={0}
-        fileName={fileName || "Choose CSV"}
-        isOverview={false}
-        onOpenKeybinds={openKeybindSettings}
-        onOpenReview={() => undefined}
-        onStartOver={() => setModal({ type: "start-over", target: "signin" })}
-        rowCount={0}
-      />
-      <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`}>
+    if (!sessionState.rows.length) {
+      return (
         <section className="mx-auto flex h-full w-full max-w-[1800px] flex-col">
           <div className={`${styles.card} p-5 sm:p-6 lg:p-8`}>
-          <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <BrandLabel label={APP_TITLE} />
-              <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
-                Choose CSV
-              </h1>
-              <button
-                className={`${styles.mutedLink} mt-2`}
-                onClick={openRenameModal}
-                type="button"
-              >
-                Coder: {firstName}
-              </button>
+            <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <BrandLabel label={APP_TITLE} />
+                <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
+                  Choose CSV
+                </h1>
+                <button
+                  className={`${styles.mutedLink} mt-2`}
+                  onClick={openRenameModal}
+                  type="button"
+                >
+                  Coder: {firstName}
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setModal({ type: "start-over", target: "signin" })}
+                  variant="secondarySmall"
+                >
+                  <Icon name="rotateCcw" size={16} />
+                  Start over
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => setModal({ type: "start-over", target: "signin" })}
-                variant="secondarySmall"
-              >
-                <Icon name="rotateCcw" size={16} />
-                Start over
-              </Button>
-            </div>
-          </div>
 
-          <div className="mt-6 flex flex-1 flex-col">
-            <input
-              accept=".csv,text/csv"
-              className="sr-only"
-              id="csv-upload"
-              onChange={handleFileChange}
-              ref={fileInputRef}
-              type="file"
-            />
-            <label
-              className={`flex min-h-[42vh] w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 px-5 py-12 text-center dark:border-neutral-700 dark:bg-neutral-800 ${styles.interactiveSurface}`}
-              htmlFor="csv-upload"
-            >
-              <Icon className="mb-3 text-blue-700 dark:text-blue-300" name="upload" size={28} />
-              <span className="text-base font-semibold text-neutral-950 dark:text-neutral-50">Select CSV file</span>
-            </label>
-            {error ? <p className="mt-4 text-sm text-red-700 dark:text-red-400">{error}</p> : null}
-          </div>
+            <div className="mt-6 flex flex-1 flex-col">
+              <label
+                className={`flex min-h-[42vh] w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 px-5 py-12 text-center dark:border-neutral-700 dark:bg-neutral-800 ${styles.interactiveSurface}`}
+                htmlFor="csv-upload"
+              >
+                <Icon className="mb-3 text-blue-700 dark:text-blue-300" name="upload" size={28} />
+                <span className="text-base font-semibold text-neutral-950 dark:text-neutral-50">Select CSV file</span>
+              </label>
+              {error ? <p className="mt-4 text-sm text-red-700 dark:text-red-400">{error}</p> : null}
+            </div>
           </div>
         </section>
-      </main>
-      {modalElement}
-      <DesktopUpdateNotice />
-      </>
+      );
+    }
+
+    const detailFields = sessionState.fields.filter(
+      (field) =>
+        field !== LABEL_FIELD &&
+        field !== NOTES_FIELD &&
+        field !== FLAG_FIELD &&
+        field.toLowerCase() !== "id",
     );
-  }
 
-  const detailFields = fields.filter(
-    (field) => field !== LABEL_FIELD && field !== NOTES_FIELD && field !== FLAG_FIELD,
-  );
-
-  return (
-    <>
-    <DesktopTopbar
-      codedCount={codedCount}
-      fileName={fileName}
-      isOverview={isOverview}
-      onOpenKeybinds={openKeybindSettings}
-      onOpenReview={() => setIsOverview(true)}
-      onStartOver={() => setModal({ type: "start-over", target: "csv" })}
-      rowCount={rows.length}
-    />
-    <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:px-8`}>
+    return (
       <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-3 sm:gap-4 xl:h-full xl:min-h-0">
         <header className={`${styles.card} shrink-0 p-3 sm:p-4 ${isDesktop ? "hidden" : ""}`}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <h1 className="max-w-full truncate text-xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-2xl">
-                  {fileName}
+                  {sessionState.fileName}
                 </h1>
                 <button
                   className="inline-flex h-5 items-center rounded border border-amber-300 bg-amber-50 px-2 text-xs font-medium leading-none text-amber-900 transition hover:border-amber-400 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-400/10 dark:text-amber-200 dark:hover:border-amber-400/50 dark:hover:bg-amber-400/20"
@@ -719,12 +448,12 @@ export default function CsvCoder() {
                 <span className="font-medium text-neutral-950 dark:text-neutral-50">
                   {codedCount}
                 </span>
-                /{rows.length} coded
+                /{sessionState.rows.length} coded
               </div>
-              {!isOverview ? (
+              {!sessionState.isOverview ? (
                 <Button
                   className="sm:w-auto"
-                  onClick={() => setIsOverview(true)}
+                  onClick={() => dispatch({ type: "set_overview", value: true })}
                   variant="secondarySmall"
                 >
                   <Icon name="listChecks" size={16} />
@@ -760,9 +489,7 @@ export default function CsvCoder() {
                         setKeybindConfig(DEFAULT_KEYBINDS);
                         resetKeybindConfig();
                       }}
-                      onClose={() => {
-                        closeKeybindSettings();
-                      }}
+                      onClose={closeKeybindSettings}
                     />
                   </div>
                 ) : null}
@@ -781,14 +508,14 @@ export default function CsvCoder() {
           <div className="mt-3">
             <div className="mb-2 flex items-center justify-between text-sm text-neutral-600 dark:text-neutral-400">
               <span>
-                {isOverview ? "Overview" : `Question ${rowNumber} of ${rows.length}`}
+                {sessionState.isOverview ? "Overview" : `Question ${rowNumber} of ${sessionState.rows.length}`}
               </span>
               <span>{saveStatus}</span>
             </div>
             <progress
               aria-label="Coding progress"
               className="coding-progress"
-              max={rows.length}
+              max={sessionState.rows.length}
               value={codedCount}
             />
           </div>
@@ -813,201 +540,51 @@ export default function CsvCoder() {
         ) : null}
 
         <div className="grid flex-1 gap-4 xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(400px,32vw)] xl:overflow-hidden">
-          {isOverview ? (
-            <section className={`${styles.card} p-4 sm:p-5 lg:p-6 xl:col-span-2 xl:min-h-0 xl:overflow-y-auto`}>
-              <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                <Icon name="listChecks" />
-                Overview
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {rows.map((row, index) => {
-                  const hasCoding = !isBlankOrNA(row[LABEL_FIELD]);
-                  const hasNotes = !isBlankOrNA(row[NOTES_FIELD]);
-                  const isFlagged = String(row[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE";
-
-                  return (
-                    <button
-                      className={
-                        isFlagged
-                          ? "grid gap-3 rounded-lg border border-amber-500 bg-amber-200 p-3 text-left text-amber-950 transition hover:border-amber-600 hover:bg-amber-300 dark:border-amber-300 dark:bg-amber-500/30 dark:text-amber-50 dark:hover:border-amber-200 dark:hover:bg-amber-500/40"
-                          : `grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-3 text-left dark:border-neutral-800 dark:bg-neutral-800 ${styles.interactiveSurface}`
-                      }
-                      key={`${row.Question ?? "row"}-${index}`}
-                      onClick={() => openRow(index)}
-                      type="button"
-                    >
-                      <span
-                        className={
-                          isFlagged
-                            ? "text-sm font-semibold text-amber-950 dark:text-amber-50"
-                            : "text-sm font-semibold text-neutral-950 dark:text-neutral-50"
-                        }
-                      >
-                        Question {index + 1}
-                      </span>
-                      <span className="flex flex-wrap gap-2">
-                        <StatusPill active={hasCoding} activeText="Coding" inactiveText="No coding" />
-                        <StatusPill active={hasNotes} activeText="Note" inactiveText="No note" />
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
+          {sessionState.isOverview ? (
+            <OverviewPanel
+              rows={sessionState.rows}
+              onOpenRow={openRow}
+            />
           ) : (
             <>
-          <section className={`${styles.card} p-4 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto`} ref={questionSectionRef}>
-            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                  <Icon name="fileText" />
-                  I Wonder Question
-                  </span>
-                  <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                    Coding preview:{" "}
-                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">
-                      {selectedCodes.length ? selectedCodes.join(";") : "NA"}
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2 md:ml-auto md:flex-nowrap md:justify-end">
-                  <a
-                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
-                    href={RUBRIC_URL}
-                    onClick={(event) => openExternalLink(event, RUBRIC_URL)}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    Rubric
-                    <Icon name="externalLink" size={15} />
-                  </a>
-                  <a
-                    className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
-                    href={INSTRUCTOR_DIARY_URL}
-                    onClick={(event) => openExternalLink(event, INSTRUCTOR_DIARY_URL)}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    Instructor diary
-                    <Icon name="externalLink" size={15} />
-                  </a>
-                <Button
-                  aria-pressed={isCurrentRowFlagged}
-                  className={
-                    `md:ml-auto ${isCurrentRowFlagged
-                      ? "border-amber-500 bg-amber-200 text-amber-950 hover:border-amber-600 hover:bg-amber-300 dark:border-amber-300 dark:bg-amber-500/30 dark:text-amber-50 dark:hover:border-amber-200 dark:hover:bg-amber-500/40"
-                      : ""}`
-                  }
-                  onClick={toggleCurrentRowFlag}
-                  variant="secondarySmall"
-                >
-                  <Icon name="flag" size={16} />
-                  {isCurrentRowFlagged ? "Flagged" : "Flag question"}
-                </Button>
-              </div>
-            </div>
-
-            <dl className="grid gap-3 lg:gap-4">
-              {detailFields.map((field) => (
-                <div
-                  className={
-                    field === "Question"
-                      ? "rounded-lg border border-stone-200 bg-stone-50 p-4 dark:border-neutral-800 dark:bg-neutral-800 sm:p-5 xl:p-6"
-                      : "grid gap-1 border-b border-stone-100 pb-3 dark:border-neutral-800 last:border-b-0"
-                  }
-                  key={field}
-                >
-                  <dt className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-500">{field}</dt>
-                  <dd
-                    className={
-                      field === "Question"
-                        ? "mt-2 whitespace-pre-wrap text-base leading-7 text-neutral-950 dark:text-neutral-50 sm:text-lg xl:text-xl xl:leading-8"
-                        : "whitespace-pre-wrap text-sm leading-6 text-neutral-800 dark:text-neutral-200"
-                    }
-                  >
-                    {currentRow?.[field] || <span className="text-neutral-400 dark:text-neutral-600">Blank</span>}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-
-          <aside className={`${styles.card} p-3 sm:p-4 lg:p-5 xl:min-h-0 xl:overflow-y-auto`}>
-            <div className="space-y-4">
-              <div className="grid gap-4">
-                {groupOrder.map((group) => (
-                  <fieldset className="grid gap-2" key={group}>
-                    <legend className="mb-2 text-sm font-semibold text-neutral-800 dark:text-neutral-200">
-                      {codingGroupLabels[group]}
-                    </legend>
-                    <div className="grid gap-2">
-                      {codingOptionsByGroup[group]
-                        .map((option) => {
-                          const checked = selectedCodes.includes(option.code);
-                          return (
-                            <label
-                              className={`grid cursor-pointer grid-cols-[auto_1fr] gap-3 rounded-lg border border-stone-200 bg-white px-3 py-2 dark:border-neutral-800 dark:bg-neutral-800 ${styles.interactiveSurface}`}
-                              key={option.code}
-                            >
-                              <input
-                                checked={checked}
-                                className="mt-1 h-4 w-4 accent-blue-600 dark:accent-blue-600"
-                                onChange={() => toggleCode(option.code)}
-                                type="checkbox"
-                              />
-                              <span className="min-w-0">
-                                <span className="mr-2 inline-flex min-w-8 justify-center rounded border border-stone-300 bg-stone-50 px-1.5 py-0.5 text-xs font-bold text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
-                                  {option.code}
-                                </span>
-                                <span className="text-sm leading-5 text-neutral-800 dark:text-neutral-200">
-                                  {option.label}
-                                </span>
-                              </span>
-                            </label>
-                          );
-                        })}
-                    </div>
-                  </fieldset>
-                ))}
-              </div>
-
-              <div>
-                <FieldLabel htmlFor="notes">Notes</FieldLabel>
-                <textarea
-                  className={`${styles.field} mt-2 min-h-32 resize-y px-3 py-2 text-sm leading-6`}
-                  id="notes"
-                  onFocus={keepNotesVisible}
-                  onInput={(event) =>
-                    updateCurrentRow(
-                      NOTES_FIELD,
-                      event.currentTarget.value.trim() ? event.currentTarget.value : "NA",
-                    )
-                  }
-                  value={isBlankOrNA(currentRow?.[NOTES_FIELD]) ? "" : currentRow?.[NOTES_FIELD] ?? ""}
-                />
-              </div>
-            </div>
-          </aside>
+              <QuestionPanel
+                currentRow={currentRow}
+                detailFields={detailFields}
+                selectedCodes={selectedCodes}
+                isCurrentRowFlagged={isCurrentRowFlagged}
+                onToggleFlag={() => dispatch({ type: "toggle_flag" })}
+                questionSectionRef={questionSectionRef}
+                questionNumber={sessionState.currentIndex + 1}
+              />
+              <CodingPanel
+                currentRow={currentRow}
+                selectedCodes={selectedCodes}
+                onToggleCode={(code) => dispatch({ type: "toggle_code", code })}
+                onUpdateNotes={(value) => dispatch({ type: "update_notes", value })}
+              />
             </>
           )}
         </div>
 
         <footer className="shrink-0 rounded-lg border border-stone-200 bg-white/95 p-3 shadow-soft backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 sm:p-4">
-          {isOverview ? (
-            <div className="flex justify-center">
+          {sessionState.isOverview ? (
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <Button onClick={exportCsv} variant="primary">
                 <Icon name="download" />
                 Export CSV
               </Button>
+              {sessionState.exportedAt ? (
+                <Button onClick={clearCurrentCsv} variant="secondary">
+                  <Icon name="rotateCcw" size={16} />
+                  Start next CSV
+                </Button>
+              ) : null}
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
               <Button
                 className="disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:border-stone-300 disabled:hover:bg-transparent disabled:hover:shadow-none dark:disabled:hover:border-neutral-700"
-                disabled={currentIndex === 0}
+                disabled={sessionState.currentIndex === 0}
                 onClick={goToPrevious}
               >
                 <Icon name="chevronLeft" />
@@ -1024,9 +601,58 @@ export default function CsvCoder() {
           )}
         </footer>
       </div>
-    </main>
-    {modalElement}
-    <DesktopUpdateNotice />
+    );
+  })();
+
+  const modalElement = modal ? (
+    <ModalDialog
+      error={error}
+      modal={modal}
+      fileName={sessionState.fileName}
+      onCancel={() => {
+        setError("");
+        setModal(null);
+        setPendingFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }}
+      onConfirmRename={confirmRename}
+      onConfirmStartOver={confirmStartOver}
+      onConfirmReplaceCsv={confirmReplaceCsv}
+      onRenameInput={(value) => setModal({ type: "rename", value })}
+    />
+  ) : null;
+
+  const mainClassName = sessionState.rows.length
+    ? `${isDesktop ? "desktop-workspace" : "app-shell"} px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:px-8`
+    : `${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`;
+
+  return (
+    <>
+      <DesktopTopbar
+        codedCount={topbarProps.codedCount}
+        fileName={topbarProps.fileName}
+        isOverview={topbarProps.isOverview}
+        onOpenKeybinds={openKeybindSettings}
+        onOpenReview={topbarProps.onOpenReview}
+        onStartOver={topbarProps.onStartOver}
+        rowCount={topbarProps.rowCount}
+      />
+      <main className={mainClassName}>
+        {mainContent}
+      </main>
+      {modalElement}
+      <input
+        accept=".csv,text/csv"
+        className="sr-only"
+        id="csv-upload"
+        aria-label="Select CSV file"
+        onChange={handleFileChange}
+        ref={fileInputRef}
+        type="file"
+      />
+      <DesktopUpdateNotice />
     </>
   );
 }

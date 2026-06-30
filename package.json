@@ -12,7 +12,9 @@
     "desktop:build": "tauri build",
     "desktop:build:ci": "tauri build --config src-tauri/tauri.ci.conf.json",
     "desktop:test": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "test": "playwright test",
+    "test": "pnpm test:unit && pnpm test:e2e",
+    "test:e2e": "playwright test",
+    "test:unit": "vitest run tests/unit",
     "preview": "astro preview",
     "astro": "astro"
   },
@@ -32,6 +34,7 @@
     "@tailwindcss/vite": "^4.3.1",
     "@tauri-apps/cli": "^2.11.3",
     "tailwindcss": "^4.3.1",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
   }
 }

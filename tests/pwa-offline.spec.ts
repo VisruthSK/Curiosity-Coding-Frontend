@@ -19,15 +19,34 @@ function createCsvFile(name: string) {
 }
 
 async function waitForServiceWorkerControl(page: import("@playwright/test").Page) {
-  const hasController = await page.evaluate(async () => {
-    if (!("serviceWorker" in navigator)) return false;
-    const registration = await navigator.serviceWorker.ready;
-    if (!registration.active) return false;
-    return Boolean(navigator.serviceWorker.controller);
-  });
+  let hasController = false;
+  try {
+    hasController = await page.evaluate(async () => {
+      if (!("serviceWorker" in navigator)) return false;
+      const registration = await navigator.serviceWorker.ready;
+      if (!registration.active) return false;
+      return Boolean(navigator.serviceWorker.controller);
+    });
+  } catch {
+    await page.waitForLoadState("domcontentloaded");
+    try {
+      hasController = await page.evaluate(async () => {
+        if (!("serviceWorker" in navigator)) return false;
+        const registration = await navigator.serviceWorker.ready;
+        if (!registration.active) return false;
+        return Boolean(navigator.serviceWorker.controller);
+      });
+    } catch {
+      hasController = false;
+    }
+  }
 
   if (!hasController) {
-    await page.reload({ waitUntil: "domcontentloaded" });
+    try {
+      await page.reload({ waitUntil: "domcontentloaded" });
+    } catch {
+      await page.waitForLoadState("domcontentloaded");
+    }
   }
 
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));

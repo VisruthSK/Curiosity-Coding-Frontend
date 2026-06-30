@@ -2,9 +2,10 @@ use std::{fs, path::Path};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
+use url::Url;
 
 #[tauri::command]
-async fn export_csv(app: AppHandle, file_name: String, content: String) -> Result<(), String> {
+async fn export_csv(app: AppHandle, file_name: String, content: String) -> Result<bool, String> {
     let safe_name = sanitize_export_name(&file_name);
     let Some(path) = app
         .dialog()
@@ -13,21 +14,69 @@ async fn export_csv(app: AppHandle, file_name: String, content: String) -> Resul
         .set_file_name(&safe_name)
         .blocking_save_file()
     else {
-        return Ok(());
+        return Ok(false);
     };
 
     let path = path
         .into_path()
         .map_err(|error| format!("Could not resolve export path: {error}"))?;
 
-    write_csv_file(&path, &content)
+    write_csv_file(&path, &content)?;
+    Ok(true)
 }
 
 #[tauri::command]
 fn open_external_url(app: AppHandle, url: String) -> Result<(), String> {
+    let validated = validate_external_url(&url)?;
     app.opener()
-        .open_url(&url, None::<&str>)
+        .open_url(validated.as_str(), None::<&str>)
         .map_err(|e| format!("Failed to open URL: {e}"))
+}
+
+#[tauri::command]
+fn log_update_failure(app: AppHandle, error: String) -> Result<(), String> {
+    use tauri::Manager;
+    let log_dir = app.path().app_log_dir().map_err(|e| e.to_string())?;
+    write_update_failure_log(&log_dir, &error)
+}
+
+fn write_update_failure_log(log_dir: &Path, error: &str) -> Result<(), String> {
+    use std::io::Write;
+    fs::create_dir_all(log_dir).map_err(|e| e.to_string())?;
+    let log_path = log_dir.join("updater_errors.log");
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .map_err(|e| e.to_string())?;
+    
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    writeln!(file, "[timestamp={}] Update check failed: {}", now, error).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Validates a URL against the allowlist of permitted external domains.
+/// Returns the canonical URL string if valid, or an error message if not.
+fn validate_external_url(raw: &str) -> Result<String, String> {
+    let parsed = Url::parse(raw).map_err(|_| "Invalid URL".to_string())?;
+
+    if parsed.scheme() != "https" {
+        return Err("Only HTTPS URLs are allowed".to_string());
+    }
+
+    const ALLOWED_HOSTS: &[&str] = &["www.dropbox.com", "docs.google.com"];
+
+    let host = parsed.host_str().ok_or("URL must have a host")?;
+
+    if !ALLOWED_HOSTS.contains(&host) {
+        return Err(format!("Domain '{host}' is not allowed"));
+    }
+
+    Ok(parsed.to_string())
 }
 
 fn sanitize_export_name(file_name: &str) -> String {
@@ -61,14 +110,14 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![export_csv, open_external_url])
+        .invoke_handler(tauri::generate_handler![export_csv, open_external_url, log_update_failure])
         .run(tauri::generate_context!())
         .expect("failed to run Curiosity Coding Interface");
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{sanitize_export_name, write_csv_file};
+    use super::{sanitize_export_name, validate_external_url, write_csv_file, write_update_failure_log};
     use serde_json::Value;
     use std::{
         fs::{self, read_to_string},
@@ -84,6 +133,25 @@ mod tests {
     }
 
     #[test]
+    fn writes_update_failure_log_to_file() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "curiosity-coding-log-{}",
+            unique_test_suffix()
+        ));
+        
+        write_update_failure_log(&temp_dir, "Connection timed out")
+            .expect("should write log successfully");
+
+        let log_file = temp_dir.join("updater_errors.log");
+        assert!(log_file.exists());
+        let content = read_to_string(&log_file).unwrap();
+        assert!(content.contains("Update check failed: Connection timed out"));
+        assert!(content.contains("timestamp="));
+
+        let _ = fs::remove_dir_all(temp_dir);
+    }
+
+    #[test]
     fn sanitizes_invalid_export_name_characters() {
         assert_eq!(
             sanitize_export_name("bad<>:\"/\\|?*name"),
@@ -95,6 +163,53 @@ mod tests {
     fn falls_back_for_blank_export_names() {
         assert_eq!(sanitize_export_name("   "), "coded-data.csv");
     }
+
+    // ── URL validation tests ───────────────────────────────────────────
+
+    #[test]
+    fn allows_dropbox_https_url() {
+        assert!(validate_external_url("https://www.dropbox.com/some/rubric").is_ok());
+    }
+
+    #[test]
+    fn allows_google_docs_https_url() {
+        assert!(validate_external_url("https://docs.google.com/document/d/abc123").is_ok());
+    }
+
+    #[test]
+    fn rejects_http_url() {
+        let err = validate_external_url("http://www.dropbox.com/rubric")
+            .expect_err("HTTP should be rejected");
+        assert!(err.contains("HTTPS"));
+    }
+
+    #[test]
+    fn rejects_non_allowlisted_domain() {
+        let err = validate_external_url("https://evil.example.com/payload")
+            .expect_err("non-allowlisted domain should be rejected");
+        assert!(err.contains("evil.example.com"));
+    }
+
+    #[test]
+    fn rejects_malformed_url() {
+        assert!(validate_external_url("not a url").is_err());
+    }
+
+    #[test]
+    fn rejects_javascript_scheme() {
+        let err = validate_external_url("javascript:alert(1)")
+            .expect_err("javascript scheme should be rejected");
+        assert!(err.contains("HTTPS") || err.contains("Invalid"));
+    }
+
+    #[test]
+    fn rejects_file_scheme() {
+        let err = validate_external_url("file:///C:/secrets.txt")
+            .expect_err("file scheme should be rejected");
+        assert!(err.contains("HTTPS") || err.contains("Invalid"));
+    }
+
+    // ── Updater config test ────────────────────────────────────────────
 
     #[test]
     fn release_config_generates_signed_updater_metadata() {
