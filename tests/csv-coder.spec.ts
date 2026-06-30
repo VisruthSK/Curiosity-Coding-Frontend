@@ -118,21 +118,26 @@ test("codes rows, reviews completion, and exports with title-cased name", async 
 });
 
 test("preserves CSV shape and escaped values on export", async ({ page }) => {
-  const fields = ["Date", "Question", "Student Coding", "Context", "Label", "Notes", "Follow Up"];
+  const fields = ["Date", "Question", "Student Coding", "Context", "Label", "Notes", "Follow Up", "ID"];
   const weirdNote = "Line one, with comma\nLine two with \"quotes\"";
   const csvPath = createCsvFixture(
     "weird survey.csv",
     [
       fields.join(","),
-      '2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,,,"keep ""as,is"""',
-      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged",
-      "2026-02-03,Left blank on purpose,,Section C,,,",
+      '2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,,,"keep ""as,is""",abc-123',
+      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged,def-456",
+      "2026-02-03,Left blank on purpose,,Section C,,,,ghi-789",
     ].join("\n"),
   );
 
   await page.getByLabel("First name").fill("zoe");
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+
+  // Assert ID values are NOT printed/rendered in the UI
+  await expect(page.getByText("abc-123")).toHaveCount(0);
+  await expect(page.getByText("def-456")).toHaveCount(0);
+  await expect(page.getByText("ghi-789")).toHaveCount(0);
 
   await page.getByLabel("2b").check();
   await page.getByLabel("2e").check();
@@ -160,9 +165,9 @@ test("preserves CSV shape and escaped values on export", async ({ page }) => {
   expect(readFileSync(exportedPath, "utf8")).toBe(
     [
       [...fields, "Flag"].join(","),
-      `2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,2b;2e,"${weirdNote.replaceAll('"', '""')}","keep ""as,is""",NA`,
-      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged,NA",
-      "2026-02-03,Left blank on purpose,,Section C,NA,NA,,NA",
+      `2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,2b;2e,"${weirdNote.replaceAll('"', '""')}","keep ""as,is""",abc-123,NA`,
+      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged,def-456,NA",
+      "2026-02-03,Left blank on purpose,,Section C,NA,NA,,ghi-789,NA",
     ].join("\n"),
   );
 });

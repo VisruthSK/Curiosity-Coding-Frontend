@@ -417,7 +417,11 @@ export default function CsvCoder() {
     }
 
     const detailFields = sessionState.fields.filter(
-      (field) => field !== LABEL_FIELD && field !== NOTES_FIELD && field !== FLAG_FIELD && field !== "__originalIndex",
+      (field) =>
+        field !== LABEL_FIELD &&
+        field !== NOTES_FIELD &&
+        field !== FLAG_FIELD &&
+        field.toLowerCase() !== "id",
     );
 
     return (
