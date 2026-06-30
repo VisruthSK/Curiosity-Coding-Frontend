@@ -1,7 +1,7 @@
 import type { CsvRow, SavedSession } from "./types";
+import { FLAG_FIELD } from "./utils";
 
 export const STORAGE_KEY_V1 = "curiosity-coding-tool:v1";
-export const FLAG_FIELD = "Flag";
 
 export function formatName(value: string) {
   return value

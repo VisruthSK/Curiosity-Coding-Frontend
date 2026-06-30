@@ -2,11 +2,7 @@ import { useState } from "preact/hooks";
 import { formatCsv } from "./csv";
 import { formatName, normalizeRow } from "./SessionStorage";
 import type { CsvRow } from "./types";
-import { isBlankOrNA, isTauriDesktop } from "./utils";
-
-const LABEL_FIELD = "Label";
-const NOTES_FIELD = "Notes";
-const FLAG_FIELD = "Flag";
+import { isBlankOrNA, isTauriDesktop, LABEL_FIELD, NOTES_FIELD, FLAG_FIELD } from "./utils";
 
 function getBaseName(fileName: string) {
   return fileName.replace(/\.[^/.]+$/, "");

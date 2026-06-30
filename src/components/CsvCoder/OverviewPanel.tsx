@@ -1,10 +1,6 @@
 import { Icon, StatusPill, styles } from "./ui";
 import type { CsvRow } from "./types";
-import { isBlankOrNA } from "./utils";
-
-const LABEL_FIELD = "Label";
-const NOTES_FIELD = "Notes";
-const FLAG_FIELD = "Flag";
+import { isBlankOrNA, LABEL_FIELD, NOTES_FIELD, FLAG_FIELD } from "./utils";
 
 type OverviewPanelProps = {
   rows: CsvRow[];

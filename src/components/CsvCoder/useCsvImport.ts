@@ -2,9 +2,7 @@ import { useState } from "preact/hooks";
 import { parseCsvText } from "./csv";
 import { ensureFlagField, normalizeRow } from "./SessionStorage";
 import type { CsvRow } from "./types";
-
-const LABEL_FIELD = "Label";
-const NOTES_FIELD = "Notes";
+import { LABEL_FIELD, NOTES_FIELD } from "./utils";
 
 function randomizeRows(rowsToRandomize: CsvRow[]) {
   const nextRows = [...rowsToRandomize];

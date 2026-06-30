@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { KeybindSettings } from "./CsvCoder/KeybindSettings";
 import { DEFAULT_KEYBINDS, keybindMatches, readKeybindConfig, resetKeybindConfig, writeKeybindConfig } from "./CsvCoder/keybinds";
 import type { KeybindConfig } from "./CsvCoder/keybinds";
@@ -20,12 +20,9 @@ import {
   clearSavedSession,
   formatName,
 } from "./CsvCoder/SessionStorage";
-import { isBlankOrNA, isTauriDesktop, parseLabelValue } from "./CsvCoder/utils";
+import { isBlankOrNA, isTauriDesktop, parseLabelValue, LABEL_FIELD, NOTES_FIELD, FLAG_FIELD } from "./CsvCoder/utils";
 
 const APP_TITLE = "Curiosity Coding Interface";
-const LABEL_FIELD = "Label";
-const NOTES_FIELD = "Notes";
-const FLAG_FIELD = "Flag";
 
 function hasUnexportedWork(rows: CsvRow[], exportedAt: string | null) {
   if (exportedAt) {
@@ -159,7 +156,7 @@ export default function CsvCoder() {
   const rowNumber = sessionState.rows.length ? sessionState.currentIndex + 1 : 0;
   const isDesktop = hydrated && isTauriDesktop();
 
-  function confirmName(event: Event) {
+  const confirmName = useCallback((event: Event) => {
     event.preventDefault();
     const cleanedName = formatName(nameInput);
 
@@ -172,9 +169,15 @@ export default function CsvCoder() {
     setNameInput(cleanedName);
     setIsNameConfirmed(true);
     setError("");
-  }
+  }, [nameInput]);
 
-  async function handleFileChange(event: Event) {
+  const loadCsvFile = useCallback(async (file: File) => {
+    setError("");
+    const text = await file.text();
+    loadCsvText(text, file.name);
+  }, [loadCsvText]);
+
+  const handleFileChange = useCallback(async (event: Event) => {
     const file = (event.currentTarget as HTMLInputElement).files?.[0];
     if (!file) {
       return;
@@ -187,15 +190,9 @@ export default function CsvCoder() {
     }
 
     await loadCsvFile(file);
-  }
+  }, [sessionState.rows, sessionState.exportedAt, loadCsvFile]);
 
-  async function loadCsvFile(file: File) {
-    setError("");
-    const text = await file.text();
-    loadCsvText(text, file.name);
-  }
-
-  function scrollToQuestionOnMobile() {
+  const scrollToQuestionOnMobile = useCallback(() => {
     if (!window.matchMedia("(max-width: 767px)").matches) {
       return;
     }
@@ -203,40 +200,40 @@ export default function CsvCoder() {
     window.requestAnimationFrame(() => {
       questionSectionRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
     });
-  }
+  }, []);
 
-  function goToPrevious() {
+  const goToPrevious = useCallback(() => {
     dispatch({ type: "go_previous" });
     scrollToQuestionOnMobile();
-  }
+  }, [dispatch, scrollToQuestionOnMobile]);
 
-  function goToNext() {
+  const goToNext = useCallback(() => {
     dispatch({ type: "go_next" });
     scrollToQuestionOnMobile();
-  }
+  }, [dispatch, scrollToQuestionOnMobile]);
 
-  function openRow(index: number) {
+  const openRow = useCallback((index: number) => {
     dispatch({ type: "open_row", index });
-  }
+  }, [dispatch]);
 
-  function openRenameModal() {
+  const openRenameModal = useCallback(() => {
     setModal({ type: "rename", value: firstName });
-  }
+  }, [firstName]);
 
-  function openKeybindSettings() {
+  const openKeybindSettings = useCallback(() => {
     setShowKeybindSettings(true);
     setKeybindSettingsClosing(false);
-  }
+  }, []);
 
-  function closeKeybindSettings() {
+  const closeKeybindSettings = useCallback(() => {
     setKeybindSettingsClosing(true);
     setTimeout(() => {
       setShowKeybindSettings(false);
       setKeybindSettingsClosing(false);
     }, 200);
-  }
+  }, []);
 
-  function confirmRename() {
+  const confirmRename = useCallback(() => {
     if (!modal || modal.type !== "rename") {
       return;
     }
@@ -252,9 +249,9 @@ export default function CsvCoder() {
     setNameInput(nextName);
     setError("");
     setModal(null);
-  }
+  }, [modal]);
 
-  function clearCurrentCsv() {
+  const clearCurrentCsv = useCallback(() => {
     clearSavedSession();
     dispatch({ type: "clear" });
     setError("");
@@ -263,16 +260,16 @@ export default function CsvCoder() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  }
+  }, [dispatch]);
 
-  function returnToSignin() {
+  const returnToSignin = useCallback(() => {
     clearCurrentCsv();
     setFirstName("");
     setNameInput("");
     setIsNameConfirmed(false);
-  }
+  }, [clearCurrentCsv]);
 
-  function confirmStartOver() {
+  const confirmStartOver = useCallback(() => {
     if (!modal || modal.type !== "start-over") {
       return;
     }
@@ -284,9 +281,9 @@ export default function CsvCoder() {
     }
 
     setModal(null);
-  }
+  }, [modal, returnToSignin, clearCurrentCsv]);
 
-  async function confirmReplaceCsv() {
+  const confirmReplaceCsv = useCallback(async () => {
     if (!modal || modal.type !== "replace-csv" || !pendingFile) {
       return;
     }
@@ -295,7 +292,7 @@ export default function CsvCoder() {
     const file = pendingFile;
     setPendingFile(null);
     await loadCsvFile(file);
-  }
+  }, [modal, pendingFile, loadCsvFile]);
 
   if (!hydrated) {
     return (
