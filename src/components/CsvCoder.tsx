@@ -137,6 +137,29 @@ function isTauriDesktop() {
   return Boolean(window.__TAURI_INTERNALS__);
 }
 
+async function openExternalUrl(url: string) {
+  if (isTauriDesktop()) {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("open_external_url", { url });
+    } catch {
+      // Fallback to window.open if Tauri invoke fails
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function openExternalLink(event: MouseEvent, url: string) {
+  if (!isTauriDesktop()) {
+    return;
+  }
+
+  event.preventDefault();
+  void openExternalUrl(url);
+}
+
 async function writeDownload(content: string, fileName: string) {
   if (isTauriDesktop()) {
     const { invoke } = await import("@tauri-apps/api/core");
@@ -854,6 +877,7 @@ export default function CsvCoder() {
                   <a
                     className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
                     href={RUBRIC_URL}
+                    onClick={(event) => openExternalLink(event, RUBRIC_URL)}
                     rel="noopener noreferrer"
                     target="_blank"
                   >
@@ -863,6 +887,7 @@ export default function CsvCoder() {
                   <a
                     className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
                     href={INSTRUCTOR_DIARY_URL}
+                    onClick={(event) => openExternalLink(event, INSTRUCTOR_DIARY_URL)}
                     rel="noopener noreferrer"
                     target="_blank"
                   >

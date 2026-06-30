@@ -42,7 +42,7 @@ function WindowButton({ children, className = "", ...props }: {
 } & Omit<JSX.IntrinsicElements["button"], "className">) {
   return (
     <button
-      className={`inline-flex h-8 w-10 items-center justify-center rounded-md text-neutral-600 transition hover:bg-stone-200 hover:text-neutral-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-neutral-300 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:outline-blue-400 ${className}`}
+      className={`inline-flex h-8 w-10 items-center justify-center rounded-md text-neutral-600 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-neutral-300 dark:focus-visible:outline-blue-400 ${className}`}
       type="button"
       {...props}
     >
@@ -189,16 +189,18 @@ export function DesktopTopbar({
       onDblClick={toggleMaximizeFromChrome}
       onMouseDown={startDragging}
     >
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2 self-center">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:border-blue-400/20 dark:bg-blue-500/15 dark:text-blue-200">
           <Icon name="lightbulb" size={17} />
         </div>
-        <div className="min-w-0 truncate text-sm font-semibold leading-none text-neutral-900 dark:text-white" title={fileName}>
-          {fileName}
+        <div className="flex min-w-0 items-center gap-2 leading-none">
+          <div className="min-w-0 truncate text-sm font-semibold leading-none text-neutral-900 dark:text-white" title={fileName}>
+            {fileName}
+          </div>
+          <span className="hidden shrink-0 items-center rounded border border-stone-300 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-neutral-500 dark:border-white/10 xl:inline-flex">
+            v{__APP_VERSION__}
+          </span>
         </div>
-        <span className="hidden shrink-0 items-center rounded border border-stone-300 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-neutral-500 dark:border-white/10 xl:inline-flex">
-          v{__APP_VERSION__}
-        </span>
       </div>
 
       <div className="hidden min-w-0 items-center gap-3 text-xs text-neutral-600 dark:text-neutral-400 md:flex" style={{ gridColumn: "2 / 3" }}>
@@ -233,15 +235,15 @@ export function DesktopTopbar({
       <ThemeToggle />
 
       <div className="flex items-center gap-0.5 border-l border-stone-200 pl-2 dark:border-white/10">
-        <WindowButton aria-label="Minimize" onClick={() => appWindow?.minimize()}>
+        <WindowButton aria-label="Minimize" className="hover:bg-stone-200 hover:text-neutral-900 dark:hover:bg-white/10 dark:hover:text-white" onClick={() => appWindow?.minimize()}>
           <Icon name="minus" size={15} />
         </WindowButton>
-        <WindowButton aria-label={isMaximized ? "Restore" : "Maximize"} onClick={toggleMaximize}>
+        <WindowButton aria-label={isMaximized ? "Restore" : "Maximize"} className="hover:bg-stone-200 hover:text-neutral-900 dark:hover:bg-white/10 dark:hover:text-white" onClick={toggleMaximize}>
           <Icon name={isMaximized ? "copy" : "square"} size={14} />
         </WindowButton>
         <WindowButton
           aria-label="Close"
-          className="hover:bg-red-600 hover:text-white"
+          className="hover:bg-[#c42b1c] hover:text-white focus-visible:bg-[#c42b1c] focus-visible:text-white focus-visible:outline-[#8f1f14] active:bg-[#a52418] active:text-white dark:hover:bg-[#c42b1c] dark:hover:text-white dark:focus-visible:bg-[#c42b1c] dark:focus-visible:text-white dark:focus-visible:outline-[#f87171] dark:active:bg-[#a52418] dark:active:text-white"
           onClick={() => appWindow?.close()}
         >
           <Icon name="x" size={16} />

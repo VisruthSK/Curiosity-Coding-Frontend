@@ -5,6 +5,10 @@ import { join } from "node:path";
 
 test.use({ serviceWorkers: "block" });
 
+const rubricUrl = "https://www.dropbox.com/scl/fi/hk484lt52g8u4j87q8wcg/RubricApril2026.xlsx";
+const instructorDiaryUrl =
+  "https://docs.google.com/spreadsheets/d/1OfLVEqSGIwWYakWB9QCMS1p0nSKU-8QfsL0Gb_YuN38/edit?usp=sharing";
+
 function createCsvFile(name: string) {
   const directory = mkdtempSync(join(tmpdir(), "curiosity-coding-desktop-"));
   const filePath = join(directory, name);
@@ -59,6 +63,10 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
   await page.getByLabel("2b").check();
   await page.getByLabel("Notes").fill("Saved from desktop");
   await expect(page.getByText("v0.1.0")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Rubric" })).toHaveAttribute("href", rubricUrl);
+  await expect(page.getByRole("link", { name: "Instructor diary" })).toHaveAttribute("href", instructorDiaryUrl);
+  await page.getByRole("link", { name: "Rubric" }).click();
+  await page.getByRole("link", { name: "Instructor diary" }).click();
   await page.getByRole("button", { name: "Next" }).click();
   await page.getByRole("button", { name: "Export CSV" }).click();
 
@@ -83,6 +91,20 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
       ].join("\n"),
     },
   });
+
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __desktopInvokes?: { cmd: string; args: unknown }[] })
+            .__desktopInvokes?.filter((call) => call.cmd === "open_external_url")
+            .map((call) => call.args) ?? [],
+      ),
+    )
+    .toEqual([
+      { url: rubricUrl },
+      { url: instructorDiaryUrl },
+    ]);
 
   const decorationCall = await page.evaluate(
     () =>

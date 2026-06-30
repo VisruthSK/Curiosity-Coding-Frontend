@@ -1,6 +1,7 @@
 use std::{fs, path::Path};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_opener::OpenerExt;
 
 #[tauri::command]
 fn export_csv(app: AppHandle, file_name: String, content: String) -> Result<(), String> {
@@ -20,6 +21,13 @@ fn export_csv(app: AppHandle, file_name: String, content: String) -> Result<(), 
         .map_err(|error| format!("Could not resolve export path: {error}"))?;
 
     write_csv_file(&path, &content)
+}
+
+#[tauri::command]
+fn open_external_url(app: AppHandle, url: String) -> Result<(), String> {
+    app.opener()
+        .open_url(&url, None::<&str>)
+        .map_err(|e| format!("Failed to open URL: {e}"))
 }
 
 fn sanitize_export_name(file_name: &str) -> String {
@@ -50,9 +58,10 @@ fn write_csv_file(path: &Path, content: &str) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![export_csv])
+        .invoke_handler(tauri::generate_handler![export_csv, open_external_url])
         .run(tauri::generate_context!())
         .expect("failed to run Curiosity Coding Interface");
 }
