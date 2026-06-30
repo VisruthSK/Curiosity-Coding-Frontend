@@ -16,7 +16,14 @@ export function KeybindSettings({ config, isClosing, onChange, onReset, onClose 
   const [captureTarget, setCaptureTarget] = useState<CaptureTarget>(null);
   const [captureValue, setCaptureValue] = useState<Keybind | null>(null);
   const [blockedWarning, setBlockedWarning] = useState(false);
+  const [isActive, setIsActive] = useState(false);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+
+  // Delay activation of outside-click handler to avoid synthetic clicks from Tauri webview
+  useEffect(() => {
+    const timeoutId = setTimeout(() => setIsActive(true), 100);
+    return () => clearTimeout(timeoutId);
+  }, []);
 
   useEffect(() => {
     if (!captureTarget) return;
@@ -59,6 +66,7 @@ export function KeybindSettings({ config, isClosing, onChange, onReset, onClose 
   // Close on outside click (but not on the theme toggle or keybinds button)
   useEffect(() => {
     function handleClick(event: MouseEvent) {
+      if (!isActive) return;
       if (isClosing) return;
       if (!popoverRef.current) return;
       if (popoverRef.current.contains(event.target as Node)) return;
@@ -68,7 +76,7 @@ export function KeybindSettings({ config, isClosing, onChange, onReset, onClose 
 
     document.addEventListener("click", handleClick, true);
     return () => document.removeEventListener("click", handleClick, true);
-  }, [isClosing, onClose]);
+  }, [isActive, isClosing, onClose]);
 
   function startCapture(target: CaptureTarget) {
     setCaptureTarget(target);

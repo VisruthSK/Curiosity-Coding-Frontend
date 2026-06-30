@@ -747,7 +747,7 @@ export default function CsvCoder() {
                   <Icon name="keyboard" size={16} />
                   Keybinds
                 </Button>
-                {showKeybindSettings ? (
+                {!isDesktop && showKeybindSettings ? (
                   <div className="absolute right-0 top-full z-10 mt-2">
                     <KeybindSettings
                       config={keybindConfig}

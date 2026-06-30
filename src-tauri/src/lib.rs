@@ -4,7 +4,7 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 #[tauri::command]
-fn export_csv(app: AppHandle, file_name: String, content: String) -> Result<(), String> {
+async fn export_csv(app: AppHandle, file_name: String, content: String) -> Result<(), String> {
     let safe_name = sanitize_export_name(&file_name);
     let Some(path) = app
         .dialog()
