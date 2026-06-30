@@ -79,6 +79,12 @@ test("desktop update notice automatically installs and prompts for relaunch", as
     },
   });
 
+  // Verify "Update available" is shown first, and click "Install"
+  await expect(page.getByText("Update available")).toBeVisible();
+  await expect(page.getByText("Version 0.1.1 is ready to download.")).toBeVisible();
+  await page.getByRole("button", { name: "Install" }).click();
+
+  // Once installed, the relaunch button is shown
   await expect(page.getByText("Update installed")).toBeVisible();
   await expect(page.getByText("Version 0.1.1 is ready. Relaunch to apply.")).toBeVisible();
   await page.getByRole("button", { name: "Relaunch" }).click();
@@ -115,7 +121,12 @@ test("desktop update notice logs install failures but remains silent", async ({ 
     },
   });
 
-  // Stays hidden
+  // Show Update available first and click "Install"
+  await expect(page.getByText("Update available")).toBeVisible();
+  await page.getByRole("button", { name: "Install" }).click();
+
+  // On install failure, it should close/hide the notice
+  await expect(page.getByText("Update available")).toBeHidden();
   await expect(page.getByText("Update installed")).toBeHidden();
 
   // Logs failure

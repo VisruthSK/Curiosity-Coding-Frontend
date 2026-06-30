@@ -12,7 +12,8 @@
     "desktop:build": "tauri build",
     "desktop:build:ci": "tauri build --config src-tauri/tauri.ci.conf.json",
     "desktop:test": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "test": "playwright test",
+    "test": "pnpm test:unit && pnpm test:e2e",
+    "test:e2e": "playwright test",
     "test:unit": "vitest run tests/unit",
     "preview": "astro preview",
     "astro": "astro"
