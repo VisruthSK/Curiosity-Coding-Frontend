@@ -47,10 +47,18 @@ export function readSavedSession(): SavedSession | null {
       return null;
     }
 
+    const fields: string[] = parsed.fields;
+
+    // Same requirement as CSV import: Label and Notes must be declared in fields
+    if (!fields.includes("Label") || !fields.includes("Notes")) {
+      return null;
+    }
+
     if (!Array.isArray(parsed.rows) || parsed.rows.length === 0) {
       return null;
     }
 
+    // Validate raw row shape before normalizing
     for (const row of parsed.rows) {
       if (!row || typeof row !== "object" || Array.isArray(row)) {
         return null;
@@ -62,9 +70,16 @@ export function readSavedSession(): SavedSession | null {
       }
     }
 
+    // Normalize each row strictly against the declared fields schema —
+    // this drops extra keys and fills missing ones with "", preventing
+    // corrupted localStorage shapes from bypassing import validation.
+    const rows: CsvRow[] = (parsed.rows as CsvRow[]).map((row) =>
+      normalizeRow(row, fields)
+    );
+
     let currentIndex = 0;
     if (typeof parsed.currentIndex === "number" && Number.isInteger(parsed.currentIndex)) {
-      currentIndex = Math.max(0, Math.min(parsed.currentIndex, parsed.rows.length - 1));
+      currentIndex = Math.max(0, Math.min(parsed.currentIndex, rows.length - 1));
     } else if (parsed.currentIndex !== undefined) {
       return null;
     }
@@ -79,8 +94,8 @@ export function readSavedSession(): SavedSession | null {
     return {
       firstName: formatName(parsed.firstName),
       fileName: parsed.fileName,
-      fields: parsed.fields,
-      rows: parsed.rows,
+      fields,
+      rows,
       currentIndex,
       savedAt: parsed.savedAt || new Date().toISOString(),
       exportedAt: parsed.exportedAt || undefined,

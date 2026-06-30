@@ -73,6 +73,26 @@ describe("Coding Session Reducer", () => {
     expect(nextState2.rows[1].Label).toBe("2b;2c");
   });
 
+  it("clears exportedAt when label, notes, or flag changes", () => {
+    const initialState = {
+      fileName: "test.csv",
+      fields: ["Question", "Label", "Notes", "Flag"],
+      rows: [{ Question: "Q1", Label: "NA", Notes: "", Flag: "NA" }],
+      currentIndex: 0,
+      exportedAt: "2026-01-01T00:00:00.000Z",
+      isOverview: false,
+    };
+
+    const afterLabel = sessionReducer(initialState, { type: "toggle_code", code: "2b" });
+    expect(afterLabel.exportedAt).toBeNull();
+
+    const afterNotes = sessionReducer(initialState, { type: "update_notes", value: "new note" });
+    expect(afterNotes.exportedAt).toBeNull();
+
+    const afterFlag = sessionReducer(initialState, { type: "toggle_flag" });
+    expect(afterFlag.exportedAt).toBeNull();
+  });
+
   it("handles update_notes action", () => {
     const initialState = {
       fileName: "test.csv",
@@ -165,6 +185,22 @@ describe("Session Storage", () => {
     expect(retrieved?.fileName).toBe("survey.csv");
   });
 
+  it("normalizes rows against fields on read, dropping extra keys and filling missing ones", () => {
+    const raw = {
+      firstName: "Bob",
+      fileName: "test.csv",
+      fields: ["Question", "Label", "Notes"],
+      rows: [{ Question: "Q1", Label: "2b", Notes: "some note", ExtraKey: "should be stripped" }],
+      currentIndex: 0,
+      savedAt: new Date().toISOString(),
+    };
+    window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(raw));
+    const retrieved = readSavedSession();
+    expect(retrieved).not.toBeNull();
+    expect(retrieved?.rows[0]).toEqual({ Question: "Q1", Label: "2b", Notes: "some note" });
+    expect("ExtraKey" in (retrieved?.rows[0] ?? {})).toBe(false);
+  });
+
   it("recovers gracefully from invalid saved sessions", () => {
     // Malformed JSON
     window.localStorage.setItem(STORAGE_KEY_V1, "{invalid-json");
@@ -172,6 +208,30 @@ describe("Session Storage", () => {
 
     // Missing key fields
     window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify({ firstName: "Charlie" }));
+    expect(readSavedSession()).toBeNull();
+  });
+
+  it("rejects sessions missing Label column", () => {
+    const session = {
+      firstName: "Alice",
+      fileName: "survey.csv",
+      fields: ["Question", "Notes", "Flag"], // no Label
+      rows: [{ Question: "Q1", Notes: "NA", Flag: "NA" }],
+      currentIndex: 0,
+    };
+    window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(session));
+    expect(readSavedSession()).toBeNull();
+  });
+
+  it("rejects sessions missing Notes column", () => {
+    const session = {
+      firstName: "Alice",
+      fileName: "survey.csv",
+      fields: ["Question", "Label", "Flag"], // no Notes
+      rows: [{ Question: "Q1", Label: "NA", Flag: "NA" }],
+      currentIndex: 0,
+    };
+    window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(session));
     expect(readSavedSession()).toBeNull();
   });
 

@@ -132,3 +132,92 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
       "plugin:window|start_dragging",
     ]));
 });
+
+// ── export_csv return-value / cancel / failure tests ─────────────────────────
+
+function bootDesktopSession(
+  page: import("@playwright/test").Page,
+  exportCsvHandler: (args: unknown) => Promise<unknown>,
+) {
+  return page.addInitScript((handlerSrc: string) => {
+    Object.defineProperty(Math, "random", { configurable: true, value: () => 0.99 });
+    // eslint-disable-next-line no-new-func
+    const handler = new Function("return " + handlerSrc)();
+    window.__TAURI_INTERNALS__ = {
+      invoke: async (cmd: string, args: unknown) => {
+        if (cmd === "plugin:window|is_maximized") return false;
+        if (cmd === "export_csv") return handler(args);
+        return null;
+      },
+      transformCallback: () => 1,
+      unregisterCallback: () => null,
+      metadata: { currentWindow: { label: "main" } },
+    };
+  }, exportCsvHandler.toString());
+}
+
+async function loadAndCodeCsv(page: import("@playwright/test").Page, csvPath: string) {
+  await page.goto("/");
+  await page.getByLabel("First name").fill("nora");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+  await page.getByLabel("2b").check();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+}
+
+async function getExportedAt(page: import("@playwright/test").Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const raw = window.localStorage.getItem("curiosity-coding-tool:v1");
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw).exportedAt ?? null;
+    } catch {
+      return null;
+    }
+  });
+}
+
+test("Tauri export cancel does not set exportedAt", async ({ page }) => {
+  const csvPath = createCsvFile("cancel-export.csv");
+  // export_csv returns false (user cancelled)
+  await bootDesktopSession(page, async () => false);
+  await loadAndCodeCsv(page, csvPath);
+
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await page.waitForTimeout(300);
+
+  expect(await getExportedAt(page)).toBeNull();
+  // Start-next-CSV button should NOT appear since no successful export
+  await expect(page.getByRole("button", { name: "Start next CSV" })).toHaveCount(0);
+});
+
+test("Tauri export failure does not set exportedAt", async ({ page }) => {
+  const csvPath = createCsvFile("fail-export.csv");
+  // export_csv throws (write error)
+  await bootDesktopSession(page, async () => { throw new Error("disk full"); });
+  await loadAndCodeCsv(page, csvPath);
+
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await page.waitForTimeout(300);
+
+  expect(await getExportedAt(page)).toBeNull();
+  await expect(page.getByRole("button", { name: "Start next CSV" })).toHaveCount(0);
+});
+
+test("successful Tauri export persists exportedAt through autosave", async ({ page }) => {
+  const csvPath = createCsvFile("success-export.csv");
+  // export_csv returns true (file written)
+  await bootDesktopSession(page, async () => true);
+  await loadAndCodeCsv(page, csvPath);
+
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await page.waitForTimeout(500);
+
+  const exportedAt = await getExportedAt(page);
+  expect(exportedAt).not.toBeNull();
+  expect(typeof exportedAt).toBe("string");
+
+  // Start-next-CSV button should appear
+  await expect(page.getByRole("button", { name: "Start next CSV" })).toBeVisible();
+});

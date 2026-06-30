@@ -27,6 +27,13 @@ export function ModalDialog({
   const isReplaceCsv = modal.type === "replace-csv";
   const modalRef = useRef<HTMLElement>(null);
 
+  // Keep a stable ref so the focus-trap effect never re-fires when the
+  // parent passes a new inline callback on each render.
+  const onCancelRef = useRef(onCancel);
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  });
+
   useEffect(() => {
     const previousActiveElement = document.activeElement as HTMLElement | null;
 
@@ -51,7 +58,7 @@ export function ModalDialog({
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        onCancel();
+        onCancelRef.current();
         return;
       }
 
@@ -77,7 +84,7 @@ export function ModalDialog({
         previousActiveElement.focus();
       }
     };
-  }, [onCancel]);
+  }, []); // empty: runs once on mount, cleaned up on unmount
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-950/35 px-4 backdrop-blur-sm dark:bg-black/55">
