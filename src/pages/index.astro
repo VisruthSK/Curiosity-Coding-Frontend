@@ -7,12 +7,15 @@ import "../styles/global.css";
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="description" content="Browser-only CSV coding tool" />
+    <meta name="description" content="Browser-only CSV coding interface" />
     <meta name="color-scheme" content="light dark" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="data:," />
+    <meta name="theme-color" content="#1d4ed8" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <script is:inline src="/theme.js"></script>
-    <title>Curiosity Coding</title>
+    <script is:inline type="module" src="/pwa-register.js"></script>
+    <title>Curiosity Coding Interface</title>
   </head>
   <body>
     <button
@@ -23,10 +26,10 @@ import "../styles/global.css";
       title="Theme"
       type="button"
     >
-      <svg aria-hidden="true" data-theme-icon="dark" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
-        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+      <svg aria-hidden="true" class="lucide lucide-moon" data-theme-icon="dark" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
+        <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"></path>
       </svg>
-      <svg aria-hidden="true" class="hidden" data-theme-icon="light" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
+      <svg aria-hidden="true" class="lucide lucide-sun hidden" data-theme-icon="light" fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18">
         <circle cx="12" cy="12" r="4"></circle>
         <path d="M12 2v2"></path>
         <path d="M12 20v2"></path>

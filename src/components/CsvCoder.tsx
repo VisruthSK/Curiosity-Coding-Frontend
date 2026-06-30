@@ -7,8 +7,11 @@ import { ModalDialog } from "./CsvCoder/ModalDialog";
 import type { CsvRow, ModalState, SavedSession } from "./CsvCoder/types";
 import { BrandLabel, Button, FieldLabel, Icon, StatusPill, styles } from "./CsvCoder/ui";
 import { codingGroupLabels, codingOptions } from "../data/codingOptions";
+import { DesktopTopbar } from "./DesktopTopbar";
+import { DesktopUpdateNotice } from "./DesktopUpdateNotice";
 
 const STORAGE_KEY = "curiosity-coding-tool:v1";
+const APP_TITLE = "Curiosity Coding Interface";
 const LABEL_FIELD = "Label";
 const NOTES_FIELD = "Notes";
 const FLAG_FIELD = "Flag";
@@ -130,7 +133,40 @@ function readSavedSession(): SavedSession | null {
   }
 }
 
-function writeDownload(content: string, fileName: string) {
+function isTauriDesktop() {
+  return Boolean(window.__TAURI_INTERNALS__);
+}
+
+async function openExternalUrl(url: string) {
+  if (isTauriDesktop()) {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("open_external_url", { url });
+    } catch {
+      // Fallback to window.open if Tauri invoke fails
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function openExternalLink(event: MouseEvent, url: string) {
+  if (!isTauriDesktop()) {
+    return;
+  }
+
+  event.preventDefault();
+  void openExternalUrl(url);
+}
+
+async function writeDownload(content: string, fileName: string) {
+  if (isTauriDesktop()) {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("export_csv", { fileName, content });
+    return;
+  }
+
   const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -161,6 +197,18 @@ export default function CsvCoder() {
   const [keybindSettingsClosing, setKeybindSettingsClosing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const questionSectionRef = useRef<HTMLElement | null>(null);
+  const saveSessionRef = useRef<() => SavedSession>(() => {
+    const session: SavedSession = {
+      firstName,
+      fileName,
+      fields,
+      rows,
+      currentIndex,
+      savedAt: new Date().toISOString(),
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    return session;
+  });
 
   useEffect(() => {
     setKeybindConfig(readKeybindConfig());
@@ -218,16 +266,7 @@ export default function CsvCoder() {
 
     setSaveStatus("Saving...");
     const timeoutId = window.setTimeout(() => {
-      const session: SavedSession = {
-        firstName,
-        fileName,
-        fields,
-        rows,
-        currentIndex,
-        savedAt: new Date().toISOString(),
-      };
-
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      const session = writeCurrentSession();
       setSaveStatus(`Saved ${new Date(session.savedAt).toLocaleTimeString([], {
         hour: "numeric",
         minute: "2-digit",
@@ -237,6 +276,30 @@ export default function CsvCoder() {
     return () => window.clearTimeout(timeoutId);
   }, [currentIndex, fields, fileName, firstName, hydrated, isNameConfirmed, rows]);
 
+  useEffect(() => {
+    if (!hydrated || !isNameConfirmed) {
+      return;
+    }
+
+    function saveBeforeExit() {
+      saveSessionRef.current();
+    }
+
+    function saveWhenHidden() {
+      if (document.visibilityState === "hidden") {
+        saveSessionRef.current();
+      }
+    }
+
+    window.addEventListener("pagehide", saveBeforeExit);
+    document.addEventListener("visibilitychange", saveWhenHidden);
+
+    return () => {
+      window.removeEventListener("pagehide", saveBeforeExit);
+      document.removeEventListener("visibilitychange", saveWhenHidden);
+    };
+  }, [hydrated, isNameConfirmed]);
+
   const currentRow = rows[currentIndex];
   const selectedCodes = useMemo(() => parseLabelValue(currentRow?.[LABEL_FIELD]), [currentRow]);
   const isCurrentRowFlagged = String(currentRow?.[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE";
@@ -245,6 +308,7 @@ export default function CsvCoder() {
     [rows],
   );
   const rowNumber = rows.length ? currentIndex + 1 : 0;
+  const isDesktop = hydrated && isTauriDesktop();
 
   function confirmName(event: Event) {
     event.preventDefault();
@@ -260,6 +324,21 @@ export default function CsvCoder() {
     setIsNameConfirmed(true);
     setError("");
   }
+
+  function writeCurrentSession() {
+    const session: SavedSession = {
+      firstName,
+      fileName,
+      fields,
+      rows,
+      currentIndex,
+      savedAt: new Date().toISOString(),
+    };
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    return session;
+  }
+  saveSessionRef.current = writeCurrentSession;
 
   async function handleFileChange(event: Event) {
     const file = (event.currentTarget as HTMLInputElement).files?.[0];
@@ -369,6 +448,19 @@ export default function CsvCoder() {
     setModal({ type: "rename", value: firstName });
   }
 
+  function openKeybindSettings() {
+    setShowKeybindSettings(true);
+    setKeybindSettingsClosing(false);
+  }
+
+  function closeKeybindSettings() {
+    setKeybindSettingsClosing(true);
+    setTimeout(() => {
+      setShowKeybindSettings(false);
+      setKeybindSettingsClosing(false);
+    }, 200);
+  }
+
   function confirmRename() {
     if (!modal || modal.type !== "rename") {
       return;
@@ -422,7 +514,7 @@ export default function CsvCoder() {
     setModal(null);
   }
 
-  function exportCsv() {
+  async function exportCsv() {
     const exportRows = rows.map((row) => {
       const nextRow = normalizeRow(row, fields);
       nextRow[LABEL_FIELD] = isBlankOrNA(nextRow[LABEL_FIELD]) ? "NA" : nextRow[LABEL_FIELD];
@@ -432,7 +524,12 @@ export default function CsvCoder() {
     });
     const csv = formatCsv(exportRows, fields);
 
-    writeDownload(csv, getExportName(fileName, firstName));
+    try {
+      await writeDownload(csv, getExportName(fileName, firstName));
+      setError("");
+    } catch (exportError) {
+      setError(exportError instanceof Error ? exportError.message : "CSV export failed.");
+    }
   }
 
   function keepNotesVisible(event: Event) {
@@ -470,12 +567,21 @@ export default function CsvCoder() {
   if (!isNameConfirmed) {
     return (
       <>
-      <main className="app-shell px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
+      <DesktopTopbar
+        codedCount={0}
+        fileName={APP_TITLE}
+        isOverview={false}
+        onOpenKeybinds={openKeybindSettings}
+        onOpenReview={() => undefined}
+        onStartOver={() => undefined}
+        rowCount={0}
+      />
+      <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`}>
         <section className="mx-auto flex h-full w-full max-w-[1800px] items-center justify-center">
           <div className={`${styles.card} w-full p-5 sm:max-w-lg sm:p-6 lg:p-8`}>
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
-                <BrandLabel />
+                <BrandLabel label={APP_TITLE} />
                 <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
                   Enter first name
                 </h1>
@@ -502,6 +608,7 @@ export default function CsvCoder() {
         </section>
       </main>
       {modalElement}
+      <DesktopUpdateNotice />
       </>
     );
   }
@@ -509,12 +616,21 @@ export default function CsvCoder() {
   if (!rows.length) {
     return (
       <>
-      <main className="app-shell px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8">
+      <DesktopTopbar
+        codedCount={0}
+        fileName={fileName || "Choose CSV"}
+        isOverview={false}
+        onOpenKeybinds={openKeybindSettings}
+        onOpenReview={() => undefined}
+        onStartOver={() => setModal({ type: "start-over", target: "signin" })}
+        rowCount={0}
+      />
+      <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-4 py-4 text-neutral-950 dark:text-neutral-100 sm:px-6 lg:px-8`}>
         <section className="mx-auto flex h-full w-full max-w-[1800px] flex-col">
           <div className={`${styles.card} p-5 sm:p-6 lg:p-8`}>
           <div className="flex flex-col gap-3 border-b border-stone-200 pb-5 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <BrandLabel />
+              <BrandLabel label={APP_TITLE} />
               <h1 className="mt-2 text-2xl font-semibold text-neutral-950 dark:text-neutral-50 sm:text-3xl">
                 Choose CSV
               </h1>
@@ -559,6 +675,7 @@ export default function CsvCoder() {
         </section>
       </main>
       {modalElement}
+      <DesktopUpdateNotice />
       </>
     );
   }
@@ -569,9 +686,18 @@ export default function CsvCoder() {
 
   return (
     <>
-    <main className="app-shell px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:px-8">
+    <DesktopTopbar
+      codedCount={codedCount}
+      fileName={fileName}
+      isOverview={isOverview}
+      onOpenKeybinds={openKeybindSettings}
+      onOpenReview={() => setIsOverview(true)}
+      onStartOver={() => setModal({ type: "start-over", target: "csv" })}
+      rowCount={rows.length}
+    />
+    <main className={`${isDesktop ? "desktop-workspace" : "app-shell"} px-3 py-3 text-neutral-950 dark:text-neutral-100 sm:px-5 sm:py-4 lg:px-6 xl:px-8`}>
       <div className="mx-auto flex min-h-full w-full max-w-[1800px] flex-col gap-3 sm:gap-4 xl:h-full xl:min-h-0">
-        <header className={`${styles.card} shrink-0 p-3 sm:p-4`}>
+        <header className={`${styles.card} shrink-0 p-3 sm:p-4 ${isDesktop ? "hidden" : ""}`}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -611,13 +737,9 @@ export default function CsvCoder() {
                   data-keybinds-toggle
                   onClick={() => {
                     if (showKeybindSettings) {
-                      setKeybindSettingsClosing(true);
-                      setTimeout(() => {
-                        setShowKeybindSettings(false);
-                        setKeybindSettingsClosing(false);
-                      }, 200);
+                      closeKeybindSettings();
                     } else {
-                      setShowKeybindSettings(true);
+                      openKeybindSettings();
                     }
                   }}
                   variant="secondarySmall"
@@ -639,11 +761,7 @@ export default function CsvCoder() {
                         resetKeybindConfig();
                       }}
                       onClose={() => {
-                        setKeybindSettingsClosing(true);
-                        setTimeout(() => {
-                          setShowKeybindSettings(false);
-                          setKeybindSettingsClosing(false);
-                        }, 200);
+                        closeKeybindSettings();
                       }}
                     />
                   </div>
@@ -675,6 +793,24 @@ export default function CsvCoder() {
             />
           </div>
         </header>
+
+        {isDesktop && showKeybindSettings ? (
+          <div className="fixed right-48 top-14 z-30">
+            <KeybindSettings
+              config={keybindConfig}
+              isClosing={keybindSettingsClosing}
+              onChange={(next) => {
+                setKeybindConfig(next);
+                writeKeybindConfig(next);
+              }}
+              onReset={() => {
+                setKeybindConfig(DEFAULT_KEYBINDS);
+                resetKeybindConfig();
+              }}
+              onClose={closeKeybindSettings}
+            />
+          </div>
+        ) : null}
 
         <div className="grid flex-1 gap-4 xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(400px,32vw)] xl:overflow-hidden">
           {isOverview ? (
@@ -741,6 +877,7 @@ export default function CsvCoder() {
                   <a
                     className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
                     href={RUBRIC_URL}
+                    onClick={(event) => openExternalLink(event, RUBRIC_URL)}
                     rel="noopener noreferrer"
                     target="_blank"
                   >
@@ -750,6 +887,7 @@ export default function CsvCoder() {
                   <a
                     className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
                     href={INSTRUCTOR_DIARY_URL}
+                    onClick={(event) => openExternalLink(event, INSTRUCTOR_DIARY_URL)}
                     rel="noopener noreferrer"
                     target="_blank"
                   >
@@ -875,7 +1013,9 @@ export default function CsvCoder() {
                 <Icon name="chevronLeft" />
                 Previous
               </Button>
-              <div aria-hidden="true" />
+              <div aria-hidden="true" className="text-center text-sm text-neutral-600 dark:text-neutral-400">
+                {saveStatus}
+              </div>
               <Button onClick={goToNext} variant="primary">
                 Next
                 <Icon name="chevronRight" />
@@ -886,6 +1026,7 @@ export default function CsvCoder() {
       </div>
     </main>
     {modalElement}
+    <DesktopUpdateNotice />
     </>
   );
 }

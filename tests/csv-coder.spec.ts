@@ -7,6 +7,8 @@ const rubricUrl = "https://www.dropbox.com/scl/fi/hk484lt52g8u4j87q8wcg/RubricAp
 const instructorDiaryUrl =
   "https://docs.google.com/spreadsheets/d/1OfLVEqSGIwWYakWB9QCMS1p0nSKU-8QfsL0Gb_YuN38/edit?usp=sharing";
 
+test.use({ serviceWorkers: "block" });
+
 function createCsvFile(name: string, rows: string[]) {
   const directory = mkdtempSync(join(tmpdir(), "curiosity-coding-"));
   const filePath = join(directory, name);
@@ -33,6 +35,13 @@ test.beforeEach(async ({ page }) => {
     });
   });
   await page.goto("/");
+});
+
+test("browser mode does not show desktop window controls", async ({ page }) => {
+  await expect(page.locator("[data-desktop-topbar]")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Minimize" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Maximize" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Close" })).toHaveCount(0);
 });
 
 test("codes rows, reviews completion, and exports with title-cased name", async ({
@@ -156,6 +165,33 @@ test("preserves CSV shape and escaped values on export", async ({ page }) => {
       "2026-02-03,Left blank on purpose,,Section C,NA,NA,,NA",
     ].join("\n"),
   );
+});
+
+test("flushes the latest coding state when the page is hidden", async ({ page }) => {
+  const csvPath = createCsvFile("autosave survey.csv", [
+    '2026-07-01,"Will this survive a quick close?",Autosave check,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("maya");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+  await page.getByLabel("2b").check();
+  await page.getByLabel("Notes").fill("Close-safe note");
+
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+
+  const savedSession = await page.evaluate(() =>
+    JSON.parse(window.localStorage.getItem("curiosity-coding-tool:v1") ?? "null"),
+  );
+
+  expect(savedSession.rows[0].Label).toBe("2b");
+  expect(savedSession.rows[0].Notes).toBe("Close-safe note");
 });
 
 test("randomizes loaded rows and keeps no-question coding last", async ({ page }) => {
@@ -381,6 +417,7 @@ test("keybind settings button remains available on touch devices", async ({ brow
   const context = await browser.newContext({
     hasTouch: true,
     isMobile: true,
+    serviceWorkers: "block",
     viewport: { width: 390, height: 844 },
   });
   const page = await context.newPage();

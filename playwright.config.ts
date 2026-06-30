@@ -1,7 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 export default defineConfig({
   testDir: "./tests",
+  outputDir: process.env.PLAYWRIGHT_OUTPUT_DIR ?? join(tmpdir(), "curiosity-coding-playwright-results"),
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
@@ -13,7 +16,10 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: "node tests/astro-dev-server.mjs --host 127.0.0.1 --port 1314",
+    command: "pnpm exec astro dev --host 127.0.0.1 --port 1314",
+    env: {
+      ASTRO_DEV_BACKGROUND: "0",
+    },
     url: "http://127.0.0.1:1314",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

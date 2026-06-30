@@ -3,6 +3,8 @@ import { expect, type Page, test } from "@playwright/test";
 const STORAGE_KEY = "curiosity-coding-tool:v1";
 const ROW_COUNT = 8;
 
+test.use({ serviceWorkers: "block" });
+
 type ViewportSize = {
   width: number;
   height: number;

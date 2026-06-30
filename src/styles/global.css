@@ -82,6 +82,10 @@ body {
   background: #fff;
 }
 
+:root.tauri-desktop .theme-toggle {
+  display: none;
+}
+
 :root.dark .theme-toggle {
   background: rgba(23, 23, 23, 0.85);
   border-color: #262626;
@@ -144,6 +148,18 @@ textarea:focus-visible,
 label:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.32);
   outline-offset: 2px;
+}
+
+.desktop-workspace {
+  min-height: calc(100vh - 60px);
+  min-height: calc(100dvh - 60px);
+}
+
+@media (min-width: 1280px) and (min-height: 760px) {
+  .desktop-workspace {
+    height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);
+  }
 }
 
 :root.dark button:focus-visible,

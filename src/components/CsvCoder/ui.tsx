@@ -24,14 +24,43 @@ export const styles = {
     "inline-flex items-center gap-1 rounded border border-stone-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400",
 };
 
+const iconClassNames = {
+  checkCircle: "check-circle",
+  chevronLeft: "chevron-left",
+  chevronRight: "chevron-right",
+  chevronDown: "chevron-down",
+  circle: "circle",
+  copy: "copy",
+  download: "download",
+  fileText: "file-text",
+  externalLink: "external-link",
+  flag: "flag",
+  listChecks: "list-checks",
+  rotateCcw: "rotate-ccw",
+  upload: "upload",
+  keyboard: "keyboard",
+  ellipsis: "ellipsis",
+  lightbulb: "lightbulb",
+  minus: "minus",
+  moon: "moon",
+  sun: "sun",
+  square: "square",
+  x: "x",
+} as const;
+
 const iconPaths = {
   checkCircle: [
-    ["circle", { cx: "12", cy: "12", r: "10" }],
-    ["path", { d: "m9 12 2 2 4-4" }],
+    ["path", { d: "M21.801 10A10 10 0 1 1 17 3.335" }],
+    ["path", { d: "m9 11 3 3L22 4" }],
   ],
   chevronLeft: [["path", { d: "m15 18-6-6 6-6" }]],
   chevronRight: [["path", { d: "m9 18 6-6-6-6" }]],
+  chevronDown: [["path", { d: "m6 9 6 6 6-6" }]],
   circle: [["circle", { cx: "12", cy: "12", r: "10" }]],
+  copy: [
+    ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }],
+    ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }],
+  ],
   download: [
     ["path", { d: "M12 15V3" }],
     ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }],
@@ -50,7 +79,7 @@ const iconPaths = {
     ["path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }],
   ],
   flag: [
-    ["path", { d: "M4 22V4a1 1 0 0 1 .4-.8 6 6 0 0 1 7.2 0 6 6 0 0 0 7.2 0 1 1 0 0 1 1.6.8v10a1 1 0 0 1-.4.8 6 6 0 0 1-7.2 0 6 6 0 0 0-7.2 0 1 1 0 0 0-.4.8" }],
+    ["path", { d: "M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528" }],
   ],
   listChecks: [
     ["path", { d: "M13 5h8" }],
@@ -69,8 +98,43 @@ const iconPaths = {
     ["path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }],
   ],
   keyboard: [
-    ["rect", { x: "2", y: "4", width: "20", height: "16", rx: "2" }],
-    ["path", { d: "M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10" }],
+    ["path", { d: "M10 8h.01" }],
+    ["path", { d: "M12 12h.01" }],
+    ["path", { d: "M14 8h.01" }],
+    ["path", { d: "M16 12h.01" }],
+    ["path", { d: "M18 8h.01" }],
+    ["path", { d: "M6 8h.01" }],
+    ["path", { d: "M7 16h10" }],
+    ["path", { d: "M8 12h.01" }],
+    ["rect", { width: "20", height: "16", x: "2", y: "4", rx: "2" }],
+  ],
+  ellipsis: [
+    ["circle", { cx: "12", cy: "12", r: "1" }],
+    ["circle", { cx: "19", cy: "12", r: "1" }],
+    ["circle", { cx: "5", cy: "12", r: "1" }],
+  ],
+  lightbulb: [
+    ["path", { d: "M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" }],
+    ["path", { d: "M9 18h6" }],
+    ["path", { d: "M10 22h4" }],
+  ],
+  minus: [["path", { d: "M5 12h14" }]],
+  moon: [["path", { d: "M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" }]],
+  sun: [
+    ["circle", { cx: "12", cy: "12", r: "4" }],
+    ["path", { d: "M12 2v2" }],
+    ["path", { d: "M12 20v2" }],
+    ["path", { d: "m4.93 4.93 1.41 1.41" }],
+    ["path", { d: "m17.66 17.66 1.41 1.41" }],
+    ["path", { d: "M2 12h2" }],
+    ["path", { d: "M20 12h2" }],
+    ["path", { d: "m6.34 17.66-1.41 1.41" }],
+    ["path", { d: "m19.07 4.93-1.41 1.41" }],
+  ],
+  square: [["rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }]],
+  x: [
+    ["path", { d: "M18 6 6 18" }],
+    ["path", { d: "m6 6 12 12" }],
   ],
 } as const;
 
@@ -84,7 +148,7 @@ export function Icon({ className, name, size = 18 }: { className?: string; name:
   return (
     <svg
       aria-hidden="true"
-      className={className}
+      className={cx("lucide", `lucide-${iconClassNames[name]}`, className)}
       fill="none"
       height={size}
       stroke="currentColor"
@@ -126,8 +190,8 @@ export function Button({ children, className, type = "button", variant = "second
   );
 }
 
-export function BrandLabel() {
-  return <p className={styles.brand}>Curiosity Coding</p>;
+export function BrandLabel({ label = "Curiosity Coding Interface" }: { label?: string }) {
+  return <p className={styles.brand}>{label}</p>;
 }
 
 export function FieldLabel({ children, htmlFor }: { children: ComponentChildren; htmlFor: string }) {
