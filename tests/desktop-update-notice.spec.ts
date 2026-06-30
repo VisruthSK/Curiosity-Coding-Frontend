@@ -47,6 +47,7 @@ async function bootDesktopApp(page: import("@playwright/test").Page, mock: Deskt
   }, mock);
 
   await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Enter first name" })).toBeVisible();
 }
 
 async function desktopInvokes(page: import("@playwright/test").Page) {
@@ -64,23 +65,7 @@ test("desktop update notice stays hidden when no update is available", async ({ 
     .toBe(true);
 });
 
-test("desktop update notice shows an available update", async ({ page }) => {
-  await bootDesktopApp(page, {
-    updaterResult: {
-      body: "Test release",
-      currentVersion: "0.1.0",
-      date: "2026-06-29",
-      rawJson: "{}",
-      rid: 7,
-      version: "0.1.1",
-    },
-  });
-
-  await expect(page.getByText("Desktop update available")).toBeVisible();
-  await expect(page.getByText("Version 0.1.1")).toBeVisible();
-});
-
-test("desktop update notice installs and relaunches after a successful update", async ({ page }) => {
+test("desktop update notice automatically installs and prompts for relaunch", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await bootDesktopApp(page, {
@@ -94,8 +79,8 @@ test("desktop update notice installs and relaunches after a successful update", 
     },
   });
 
-  await page.getByRole("button", { name: "Install" }).click();
   await expect(page.getByText("Update installed")).toBeVisible();
+  await expect(page.getByText("Version 0.1.1 is ready. Relaunch to apply.")).toBeVisible();
   await page.getByRole("button", { name: "Relaunch" }).click();
 
   await expect
@@ -104,12 +89,20 @@ test("desktop update notice installs and relaunches after a successful update", 
   expect(pageErrors).toEqual([]);
 });
 
-test("desktop update notice reports check failures in dev", async ({ page }) => {
+test("desktop update notice logs check failures but remains silent", async ({ page }) => {
   await bootDesktopApp(page, { updaterResult: "throw" });
-  await expect(page.getByText("check failed")).toBeVisible();
+
+  // Stays hidden
+  await expect(page.getByText("Update installed")).toBeHidden();
+  await expect(page.getByText("Update failed")).toBeHidden();
+
+  // Logs failure
+  await expect
+    .poll(async () => (await desktopInvokes(page)).map((call) => call.cmd))
+    .toContain("log_update_failure");
 });
 
-test("desktop update notice reports install failures", async ({ page }) => {
+test("desktop update notice logs install failures but remains silent", async ({ page }) => {
   await bootDesktopApp(page, {
     failInstall: true,
     updaterResult: {
@@ -121,6 +114,12 @@ test("desktop update notice reports install failures", async ({ page }) => {
       version: "0.1.1",
     },
   });
-  await page.getByRole("button", { name: "Install" }).click();
-  await expect(page.getByText("install failed")).toBeVisible();
+
+  // Stays hidden
+  await expect(page.getByText("Update installed")).toBeHidden();
+
+  // Logs failure
+  await expect
+    .poll(async () => (await desktopInvokes(page)).map((call) => call.cmd))
+    .toContain("log_update_failure");
 });

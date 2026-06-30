@@ -32,6 +32,32 @@ fn open_external_url(app: AppHandle, url: String) -> Result<(), String> {
         .map_err(|e| format!("Failed to open URL: {e}"))
 }
 
+#[tauri::command]
+fn log_update_failure(app: AppHandle, error: String) -> Result<(), String> {
+    use tauri::Manager;
+    let log_dir = app.path().app_log_dir().map_err(|e| e.to_string())?;
+    write_update_failure_log(&log_dir, &error)
+}
+
+fn write_update_failure_log(log_dir: &Path, error: &str) -> Result<(), String> {
+    use std::io::Write;
+    fs::create_dir_all(log_dir).map_err(|e| e.to_string())?;
+    let log_path = log_dir.join("updater_errors.log");
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .map_err(|e| e.to_string())?;
+    
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    writeln!(file, "[timestamp={}] Update check failed: {}", now, error).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Validates a URL against the allowlist of permitted external domains.
 /// Returns the canonical URL string if valid, or an error message if not.
 fn validate_external_url(raw: &str) -> Result<String, String> {
@@ -83,14 +109,14 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![export_csv, open_external_url])
+        .invoke_handler(tauri::generate_handler![export_csv, open_external_url, log_update_failure])
         .run(tauri::generate_context!())
         .expect("failed to run Curiosity Coding Interface");
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{sanitize_export_name, validate_external_url, write_csv_file};
+    use super::{sanitize_export_name, validate_external_url, write_csv_file, write_update_failure_log};
     use serde_json::Value;
     use std::{
         fs::{self, read_to_string},
@@ -103,6 +129,25 @@ mod tests {
             sanitize_export_name("sample survey Opal.csv"),
             "sample survey Opal.csv"
         );
+    }
+
+    #[test]
+    fn writes_update_failure_log_to_file() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "curiosity-coding-log-{}",
+            unique_test_suffix()
+        ));
+        
+        write_update_failure_log(&temp_dir, "Connection timed out")
+            .expect("should write log successfully");
+
+        let log_file = temp_dir.join("updater_errors.log");
+        assert!(log_file.exists());
+        let content = read_to_string(&log_file).unwrap();
+        assert!(content.contains("Update check failed: Connection timed out"));
+        assert!(content.contains("timestamp="));
+
+        let _ = fs::remove_dir_all(temp_dir);
     }
 
     #[test]

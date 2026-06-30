@@ -1,9 +1,11 @@
+import { useEffect, useRef } from "preact/hooks";
 import type { ModalState } from "./types";
 import { Button, FieldLabel, styles } from "./ui";
 
 type ModalDialogProps = {
   error: string;
   modal: NonNullable<ModalState>;
+  fileName?: string;
   onCancel: () => void;
   onConfirmRename: () => void;
   onConfirmStartOver: () => void;
@@ -14,6 +16,7 @@ type ModalDialogProps = {
 export function ModalDialog({
   error,
   modal,
+  fileName,
   onCancel,
   onConfirmRename,
   onConfirmStartOver,
@@ -22,15 +25,70 @@ export function ModalDialog({
 }: ModalDialogProps) {
   const isRename = modal.type === "rename";
   const isReplaceCsv = modal.type === "replace-csv";
+  const modalRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const previousActiveElement = document.activeElement as HTMLElement | null;
+
+    if (!modalRef.current) return;
+
+    // Find all focusable elements inside the modal
+    const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    // Focus rename input or first element
+    const renameInput = modalRef.current.querySelector<HTMLInputElement>("#rename-coder");
+    if (renameInput) {
+      renameInput.focus();
+    } else {
+      firstElement.focus();
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onCancel();
+        return;
+      }
+
+      if (e.key === "Tab") {
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (previousActiveElement) {
+        previousActiveElement.focus();
+      }
+    };
+  }, [onCancel]);
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-950/35 px-4 backdrop-blur-sm dark:bg-black/55">
       <section
         aria-modal="true"
+        aria-labelledby="modal-title"
         className="w-full max-w-sm rounded-lg border border-stone-200 bg-white p-5 shadow-soft dark:border-neutral-700 dark:bg-neutral-900"
+        ref={modalRef}
         role="dialog"
       >
-        <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
+        <h2 id="modal-title" className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
           {isRename ? "Rename coder" : isReplaceCsv ? "Replace current CSV?" : "Start over?"}
         </h2>
 
@@ -40,7 +98,6 @@ export function ModalDialog({
               <FieldLabel htmlFor="rename-coder">First name</FieldLabel>
             </div>
             <input
-              autoFocus
               className={`${styles.field} mt-2 px-3 py-3 text-base`}
               id="rename-coder"
               onInput={(event) => onRenameInput(event.currentTarget.value)}
@@ -55,14 +112,13 @@ export function ModalDialog({
           </>
         ) : isReplaceCsv ? (
           <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-400">
-            This CSV has coded work that has not been exported. Export before starting a new file,
-            or continue and lose the current progress.
+            This CSV has coded work that has not been exported. Discarding will permanently lose progress on "{fileName || 'the current file'}". Export before starting a new file, or continue and lose progress.
           </p>
         ) : (
           <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-400">
             {modal.target === "signin"
-              ? "This will return to the first-name screen."
-              : "This will clear the current CSV progress and return to file selection."}
+              ? `This will clear the current CSV progress for "${fileName || 'the current file'}" and return to the first-name screen.`
+              : `This will clear the current CSV progress for "${fileName || 'the current file'}" and return to file selection.`}
           </p>
         )}
 
