@@ -39,7 +39,7 @@ beforeEach(() => {
 
 describe("Coding Session Reducer", () => {
   it("handles load_csv action", () => {
-    const rows = [{ Question: "What?", Label: "NA", Notes: "NA", __originalIndex: "0" }];
+    const rows = [{ Question: "What?", Label: "NA", Notes: "NA" }];
     const fields = ["Question", "Label", "Notes"];
     const action = { type: "load_csv" as const, rows, fields, fileName: "test.csv" };
     const nextState = sessionReducer(initialSessionState, action);
@@ -152,7 +152,7 @@ describe("Session Storage", () => {
       firstName: "Alice",
       fileName: "survey.csv",
       fields: ["Question", "Label", "Notes", "Flag"],
-      rows: [{ Question: "Q1", Label: "NA", Notes: "NA", Flag: "NA", __originalIndex: "0" }],
+      rows: [{ Question: "Q1", Label: "NA", Notes: "NA", Flag: "NA" }],
       currentIndex: 0,
       isOverview: false,
     };
@@ -163,7 +163,6 @@ describe("Session Storage", () => {
     expect(retrieved).not.toBeNull();
     expect(retrieved?.firstName).toBe("Alice");
     expect(retrieved?.fileName).toBe("survey.csv");
-    expect(retrieved?.rows[0].__originalIndex).toBe("0");
   });
 
   it("recovers gracefully from invalid saved sessions", () => {
@@ -173,6 +172,84 @@ describe("Session Storage", () => {
 
     // Missing key fields
     window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify({ firstName: "Charlie" }));
+    expect(readSavedSession()).toBeNull();
+  });
+
+  it("rejects invalid fields", () => {
+    const session = {
+      firstName: "Alice",
+      fileName: "survey.csv",
+      fields: ["Question", 123, "Notes"], // non-string field
+      rows: [{ Question: "Q1", Label: "NA", Notes: "NA", Flag: "NA" }],
+      currentIndex: 0,
+    };
+    window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(session));
+    expect(readSavedSession()).toBeNull();
+
+    const session2 = {
+      firstName: "Alice",
+      fileName: "survey.csv",
+      fields: "not-an-array",
+      rows: [{ Question: "Q1", Label: "NA", Notes: "NA", Flag: "NA" }],
+      currentIndex: 0,
+    };
+    window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(session2));
+    expect(readSavedSession()).toBeNull();
+  });
+
+  it("rejects invalid rows and non-string row values", () => {
+    const session1 = {
+      firstName: "Alice",
+      fileName: "survey.csv",
+      fields: ["Question", "Label", "Notes", "Flag"],
+      rows: "not-an-array",
+      currentIndex: 0,
+    };
+    window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(session1));
+    expect(readSavedSession()).toBeNull();
+
+    const session2 = {
+      firstName: "Alice",
+      fileName: "survey.csv",
+      fields: ["Question", "Label", "Notes", "Flag"],
+      rows: [{ Question: "Q1", Label: 123, Notes: "NA", Flag: "NA" }], // non-string value
+      currentIndex: 0,
+    };
+    window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(session2));
+    expect(readSavedSession()).toBeNull();
+
+    const session3 = {
+      firstName: "Alice",
+      fileName: "survey.csv",
+      fields: ["Question", "Label", "Notes", "Flag"],
+      rows: [["not-an-object"]],
+      currentIndex: 0,
+    };
+    window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(session3));
+    expect(readSavedSession()).toBeNull();
+  });
+
+  it("clamps and validates currentIndex", () => {
+    const session1 = {
+      firstName: "Alice",
+      fileName: "survey.csv",
+      fields: ["Question", "Label", "Notes", "Flag"],
+      rows: [{ Question: "Q1", Label: "NA", Notes: "NA", Flag: "NA" }],
+      currentIndex: 5, // out of bounds
+    };
+    window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(session1));
+    const retrieved1 = readSavedSession();
+    expect(retrieved1).not.toBeNull();
+    expect(retrieved1?.currentIndex).toBe(0); // clamped to max index 0
+
+    const session2 = {
+      firstName: "Alice",
+      fileName: "survey.csv",
+      fields: ["Question", "Label", "Notes", "Flag"],
+      rows: [{ Question: "Q1", Label: "NA", Notes: "NA", Flag: "NA" }],
+      currentIndex: "not-a-number",
+    };
+    window.localStorage.setItem(STORAGE_KEY_V1, JSON.stringify(session2));
     expect(readSavedSession()).toBeNull();
   });
 });

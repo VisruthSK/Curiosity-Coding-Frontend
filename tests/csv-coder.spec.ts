@@ -541,3 +541,110 @@ test("does not warn when replacing after export", async ({ page }) => {
   await expect(page.getByText("Replacement question?")).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("warns when replacing if user edits label after export", async ({ page }) => {
+  const firstCsv = createCsvFile("first-exported-edit-label.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second-after-export-label.csv", [
+    '2026-02-01,"Replacement question?",Third,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("grace");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Code a row
+  await page.getByRole("checkbox", { name: /2b/ }).click();
+
+  // Go to overview and export
+  await page.keyboard.press("Control+Enter");
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await page.waitForTimeout(500);
+
+  // Now click on Question 1 in Overview to edit it again
+  await page.getByRole("button", { name: "Question 1" }).click();
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Edit label (check 2e as well)
+  await page.getByRole("checkbox", { name: /2e/ }).check();
+
+  // Now try to load a second CSV — should show the replace dialog since we have unexported edits!
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByRole("dialog")).toContainText("coded work that has not been exported");
+});
+
+test("warns when replacing if user edits notes after export", async ({ page }) => {
+  const firstCsv = createCsvFile("first-exported-edit-notes.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second-after-export-notes.csv", [
+    '2026-02-01,"Replacement question?",Third,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("grace");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Code a row
+  await page.getByRole("checkbox", { name: /2b/ }).click();
+
+  // Go to overview and export
+  await page.keyboard.press("Control+Enter");
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await page.waitForTimeout(500);
+
+  // Go back and edit notes
+  await page.getByRole("button", { name: "Question 1" }).click();
+  await expect(page.getByText("First question?")).toBeVisible();
+  await page.getByLabel("Notes").fill("Additional note after export");
+
+  // Try to load a second CSV — should show the replace dialog
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByRole("dialog")).toContainText("coded work that has not been exported");
+});
+
+test("warns when replacing if user toggles flag after export", async ({ page }) => {
+  const firstCsv = createCsvFile("first-exported-toggle-flag.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second-after-export-flag.csv", [
+    '2026-02-01,"Replacement question?",Third,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("grace");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Code a row
+  await page.getByRole("checkbox", { name: /2b/ }).click();
+
+  // Go to overview and export
+  await page.keyboard.press("Control+Enter");
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  await page.waitForTimeout(500);
+
+  // Go back and toggle flag
+  await page.getByRole("button", { name: "Question 1" }).click();
+  await expect(page.getByText("First question?")).toBeVisible();
+  await page.getByRole("button", { name: "Flag question" }).click();
+
+  // Try to load a second CSV — should show the replace dialog
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByRole("dialog")).toContainText("coded work that has not been exported");
+});

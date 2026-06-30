@@ -35,12 +35,7 @@ export function useCsvImport(
 
       const nextFields = ensureFlagField(parsedFields);
 
-      // Map each row to normalize and assign original index before randomization
-      const preparedRows = parsedRows.map((row, index) => {
-        const norm = normalizeRow(row, nextFields);
-        norm["__originalIndex"] = String(index);
-        return norm;
-      });
+      const preparedRows = parsedRows.map((row) => normalizeRow(row, nextFields));
 
       const randomized = randomizeRows(preparedRows);
       onSuccess(fileName, nextFields, randomized);

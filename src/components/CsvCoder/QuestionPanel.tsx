@@ -20,8 +20,8 @@ async function openExternalUrl(url: string) {
     try {
       const { invoke } = await getTauriCore();
       await invoke("open_external_url", { url });
-    } catch {
-      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      console.error("Failed to open URL in Tauri desktop mode:", e);
     }
     return;
   }

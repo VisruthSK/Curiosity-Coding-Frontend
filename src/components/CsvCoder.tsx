@@ -294,16 +294,6 @@ export default function CsvCoder() {
     await loadCsvFile(file);
   }, [modal, pendingFile, loadCsvFile]);
 
-  if (!hydrated) {
-    return (
-      <main className="flex h-dvh items-center justify-center overflow-hidden px-6 py-10">
-        <div className="h-2 w-44 overflow-hidden rounded bg-neutral-200 dark:bg-neutral-800">
-          <div className="h-full w-1/2 bg-blue-700 dark:bg-blue-700" />
-        </div>
-      </main>
-    );
-  }
-
   // Derive Topbar props based on state
   const topbarProps = useMemo(() => {
     if (!isNameConfirmed) {
@@ -335,6 +325,16 @@ export default function CsvCoder() {
       rowCount: sessionState.rows.length,
     };
   }, [isNameConfirmed, sessionState.fileName, sessionState.rows.length, sessionState.isOverview, codedCount]);
+
+  if (!hydrated) {
+    return (
+      <main className="flex h-dvh items-center justify-center overflow-hidden px-6 py-10">
+        <div className="h-2 w-44 overflow-hidden rounded bg-neutral-200 dark:bg-neutral-800">
+          <div className="h-full w-1/2 bg-blue-700 dark:bg-blue-700" />
+        </div>
+      </main>
+    );
+  }
 
   // Render Inner Content
   const mainContent = (() => {
@@ -564,11 +564,17 @@ export default function CsvCoder() {
 
         <footer className="shrink-0 rounded-lg border border-stone-200 bg-white/95 p-3 shadow-soft backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95 sm:p-4">
           {sessionState.isOverview ? (
-            <div className="flex justify-center">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <Button onClick={exportCsv} variant="primary">
                 <Icon name="download" />
                 Export CSV
               </Button>
+              {sessionState.exportedAt ? (
+                <Button onClick={clearCurrentCsv} variant="secondary">
+                  <Icon name="rotateCcw" size={16} />
+                  Start next CSV
+                </Button>
+              ) : null}
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">

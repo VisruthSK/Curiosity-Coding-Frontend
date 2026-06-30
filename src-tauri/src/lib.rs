@@ -5,7 +5,7 @@ use tauri_plugin_opener::OpenerExt;
 use url::Url;
 
 #[tauri::command]
-async fn export_csv(app: AppHandle, file_name: String, content: String) -> Result<(), String> {
+async fn export_csv(app: AppHandle, file_name: String, content: String) -> Result<bool, String> {
     let safe_name = sanitize_export_name(&file_name);
     let Some(path) = app
         .dialog()
@@ -14,14 +14,15 @@ async fn export_csv(app: AppHandle, file_name: String, content: String) -> Resul
         .set_file_name(&safe_name)
         .blocking_save_file()
     else {
-        return Ok(());
+        return Ok(false);
     };
 
     let path = path
         .into_path()
         .map_err(|error| format!("Could not resolve export path: {error}"))?;
 
-    write_csv_file(&path, &content)
+    write_csv_file(&path, &content)?;
+    Ok(true)
 }
 
 #[tauri::command]

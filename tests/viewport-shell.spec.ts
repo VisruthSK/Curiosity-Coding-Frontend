@@ -20,7 +20,6 @@ function createSeededSession() {
       Label: "NA",
       Notes: "NA",
       Flag: "NA",
-      __originalIndex: String(index),
     })),
     currentIndex: 0,
     savedAt: new Date().toISOString(),

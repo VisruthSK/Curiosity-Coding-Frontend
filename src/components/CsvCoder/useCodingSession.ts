@@ -80,14 +80,14 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
       const nextRows = state.rows.map((row, idx) =>
         idx === state.currentIndex ? { ...row, Label: newLabelValue } : row,
       );
-      return { ...state, rows: nextRows };
+      return { ...state, rows: nextRows, exportedAt: null };
     }
     case "update_notes": {
       if (!state.rows.length) return state;
       const nextRows = state.rows.map((row, idx) =>
         idx === state.currentIndex ? { ...row, Notes: action.value } : row,
       );
-      return { ...state, rows: nextRows };
+      return { ...state, rows: nextRows, exportedAt: null };
     }
     case "toggle_flag": {
       if (!state.rows.length) return state;
@@ -96,7 +96,7 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         const isFlagged = String(row["Flag"] ?? "").trim().toUpperCase() === "TRUE";
         return { ...row, Flag: isFlagged ? "NA" : "TRUE" };
       });
-      return { ...state, rows: nextRows };
+      return { ...state, rows: nextRows, exportedAt: null };
     }
     case "go_next": {
       if (!state.rows.length) return state;
