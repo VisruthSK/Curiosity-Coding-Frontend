@@ -16,7 +16,7 @@ export type KeybindConfig = {
 const KEYBINDS_STORAGE_KEY = "curiosity-coding-tool:keybinds:v1";
 
 export const DEFAULT_KEYBINDS: KeybindConfig = {
-  next: { key: "Enter", shiftKey: true, ctrlKey: false, altKey: false, metaKey: false },
+  next: { key: "Enter", shiftKey: false, ctrlKey: true, altKey: false, metaKey: false },
   previous: { key: "Tab", shiftKey: true, ctrlKey: false, altKey: false, metaKey: false },
   review: { key: "r", shiftKey: true, ctrlKey: false, altKey: false, metaKey: false },
   flag: { key: "f", shiftKey: true, ctrlKey: false, altKey: false, metaKey: false },

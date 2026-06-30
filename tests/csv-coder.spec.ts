@@ -273,7 +273,7 @@ test("renames coder and uses in-app start-over dialog", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Coder: Sam" })).toBeVisible();
 });
 
-test("Shift+Enter and Shift+Tab keybinds navigate questions", async ({ page }) => {
+test("Ctrl+Enter and Shift+Tab keybinds navigate questions", async ({ page }) => {
   const csvPath = createCsvFile("keybinds.csv", [
     '2026-01-12,"First question?",First,NA,NA',
     '2026-01-13,"Second question?",Second,NA,NA',
@@ -287,16 +287,16 @@ test("Shift+Enter and Shift+Tab keybinds navigate questions", async ({ page }) =
   // With random=0.99, order stays [First, Second, Third]; starts on First
   await expect(page.getByText("First question?")).toBeVisible();
 
-  // Press Shift+Enter to go to next question
-  await page.keyboard.press("Shift+Enter");
+  // Press Ctrl+Enter to go to next question
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByText("Second question?")).toBeVisible();
 
-  // Press Shift+Enter again
-  await page.keyboard.press("Shift+Enter");
+  // Press Ctrl+Enter again
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByText("Third question?")).toBeVisible();
 
-  // Press Shift+Enter at the last question — should go to overview
-  await page.keyboard.press("Shift+Enter");
+  // Press Ctrl+Enter at the last question — should go to overview
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
 
   // Press Shift+Tab from overview — should go back to last question
@@ -316,7 +316,7 @@ test("Shift+Enter and Shift+Tab keybinds navigate questions", async ({ page }) =
   await expect(page.getByText("First question?")).toBeVisible();
 });
 
-test("Shift+Enter and Shift+Tab work even when focused on notes textarea", async ({ page }) => {
+test("textarea takes priority over keybinds — newlines and no navigation", async ({ page }) => {
   const csvPath = createCsvFile("keybinds-notes.csv", [
     '2026-01-12,"First question?",First,NA,NA',
     '2026-01-13,"Second question?",Second,NA,NA',
@@ -328,15 +328,24 @@ test("Shift+Enter and Shift+Tab work even when focused on notes textarea", async
 
   await expect(page.getByText("First question?")).toBeVisible();
 
-  // Focus the notes textarea and press Shift+Enter — should navigate, not insert newline
+  // Focus the notes textarea and press Shift+Enter — should insert newline, NOT navigate
   await page.getByLabel("Notes").click();
   await page.keyboard.press("Shift+Enter");
-  await expect(page.getByText("Second question?")).toBeVisible();
-
-  // Focus the notes textarea and press Shift+Tab — should navigate back
-  await page.getByLabel("Notes").click();
-  await page.keyboard.press("Shift+Tab");
+  // Verify we're still on the first question (no navigation)
   await expect(page.getByText("First question?")).toBeVisible();
+  // Verify newline was inserted in the textarea
+  const notesValue = await page.getByLabel("Notes").inputValue();
+  expect(notesValue).toContain("\n");
+
+  // Press Ctrl+Enter while in textarea — should NOT navigate (textarea takes priority)
+  await page.getByLabel("Notes").click();
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Click outside textarea, then Ctrl+Enter should navigate
+  await page.getByText("First question?").click();
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByText("Second question?")).toBeVisible();
 });
 
 test("keybind settings popover rebinds shortcuts", async ({ page }) => {
@@ -370,8 +379,8 @@ test("keybind settings popover rebinds shortcuts", async ({ page }) => {
   await page.getByText("First question?").click();
   await expect(page.getByText("Keyboard shortcuts")).toHaveCount(0);
 
-  // Default Shift+Enter should no longer navigate
-  await page.keyboard.press("Shift+Enter");
+  // Default Ctrl+Enter should no longer navigate
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByText("First question?")).toBeVisible();
 
   // New Ctrl+ArrowDown should navigate to next
@@ -382,13 +391,13 @@ test("keybind settings popover rebinds shortcuts", async ({ page }) => {
   await page.getByRole("button", { name: "Keybinds" }).click();
   await expect(page.getByText("Keyboard shortcuts")).toBeVisible();
   await page.getByText("Reset to defaults").click();
-  await expect(page.getByRole("button", { name: "Rebind Next shortcut" })).toHaveText("Shift+Enter");
+  await expect(page.getByRole("button", { name: "Rebind Next shortcut" })).toHaveText("Ctrl+Enter");
 
   // Close popover by clicking outside
   await page.getByText("Second question?").click();
 
-  // Shift+Enter should work again after reset
-  await page.keyboard.press("Shift+Enter");
+  // Ctrl+Enter should work again after reset
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
 });
 
@@ -463,4 +472,72 @@ test("Shift+F toggles flag on current question", async ({ page }) => {
   // Press Shift+F again to unflag
   await page.keyboard.press("Shift+F");
   await expect(page.getByRole("button", { name: "Flag question" })).toBeVisible();
+});
+
+test("warns before replacing an active unexported CSV", async ({ page }) => {
+  const firstCsv = createCsvFile("first.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second.csv", [
+    '2026-02-01,"Replacement question?",Third,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("ada");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Code a row to create unexported work
+  await page.getByRole("checkbox", { name: /2b/ }).click();
+  await page.getByLabel("Notes").fill("important observation");
+
+  // Try to load a second CSV — should show the replace confirmation dialog
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByRole("dialog")).toContainText("coded work that has not been exported");
+  await expect(page.getByRole("button", { name: "Replace" })).toBeVisible();
+
+  // Cancel — should stay on the first CSV
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Try again and confirm replacement
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByRole("dialog")).toContainText("coded work that has not been exported");
+  await page.getByRole("button", { name: "Replace" }).click();
+  await expect(page.getByText("Replacement question?")).toBeVisible();
+});
+
+test("does not warn when replacing after export", async ({ page }) => {
+  const firstCsv = createCsvFile("first-exported.csv", [
+    '2026-01-12,"First question?",First,NA,NA',
+    '2026-01-13,"Second question?",Second,NA,NA',
+  ]);
+  const secondCsv = createCsvFile("second-after-export.csv", [
+    '2026-02-01,"Replacement question?",Third,NA,NA',
+  ]);
+
+  await page.getByLabel("First name").fill("grace");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(firstCsv);
+
+  await expect(page.getByText("First question?")).toBeVisible();
+
+  // Code a row
+  await page.getByRole("checkbox", { name: /2b/ }).click();
+
+  // Go to overview and export
+  await page.keyboard.press("Control+Enter");
+  await page.keyboard.press("Control+Enter");
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await page.getByRole("button", { name: "Export CSV" }).click();
+
+  // Wait for export to complete — the download triggers in browser mode
+  await page.waitForTimeout(500);
+
+  // Now load a second CSV — should NOT show the replace dialog
+  await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
+  await expect(page.getByText("Replacement question?")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });

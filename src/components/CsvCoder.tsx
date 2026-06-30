@@ -35,6 +35,18 @@ function isBlankOrNA(value: unknown) {
   return String(value ?? "").trim().toLowerCase() === "na" || String(value ?? "").trim() === "";
 }
 
+function hasUnexportedWork(rows: CsvRow[], exportedAt: string | null) {
+  if (exportedAt) {
+    return false;
+  }
+  return rows.some(
+    (row) =>
+      !isBlankOrNA(row[LABEL_FIELD]) ||
+      !isBlankOrNA(row[NOTES_FIELD]) ||
+      String(row[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE",
+  );
+}
+
 function parseLabelValue(value: string | undefined) {
   if (isBlankOrNA(value)) {
     return [];
@@ -127,6 +139,7 @@ function readSavedSession(): SavedSession | null {
           ? parsed.currentIndex
           : 0,
       savedAt: typeof parsed.savedAt === "string" ? parsed.savedAt : new Date().toISOString(),
+      exportedAt: typeof parsed.exportedAt === "string" ? parsed.exportedAt : undefined,
     };
   } catch {
     return null;
@@ -195,6 +208,8 @@ export default function CsvCoder() {
   const [keybindConfig, setKeybindConfig] = useState<KeybindConfig>(DEFAULT_KEYBINDS);
   const [showKeybindSettings, setShowKeybindSettings] = useState(false);
   const [keybindSettingsClosing, setKeybindSettingsClosing] = useState(false);
+  const [exportedAt, setExportedAt] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const questionSectionRef = useRef<HTMLElement | null>(null);
   const saveSessionRef = useRef<() => SavedSession>(() => {
@@ -205,6 +220,7 @@ export default function CsvCoder() {
       rows,
       currentIndex,
       savedAt: new Date().toISOString(),
+      exportedAt: exportedAt ?? undefined,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     return session;
@@ -220,6 +236,17 @@ export default function CsvCoder() {
     }
 
     function handleKeyDown(event: KeyboardEvent) {
+      // Allow default browser behavior for editable elements (textarea, input, contenteditable)
+      // Skip ALL navigation keybinds when user is typing
+      const target = event.target as HTMLElement;
+      const isEditing = target.isContentEditable || 
+        target.tagName === "TEXTAREA" || 
+        (target.tagName === "INPUT" && (target as HTMLInputElement).type !== "checkbox" && (target as HTMLInputElement).type !== "radio" && (target as HTMLInputElement).type !== "button" && (target as HTMLInputElement).type !== "submit");
+
+      if (isEditing) {
+        return; // Let browser handle all keys normally
+      }
+
       if (keybindMatches(keybindConfig.next, event)) {
         event.preventDefault();
         goToNext();
@@ -250,6 +277,7 @@ export default function CsvCoder() {
       setFields(saved.fields);
       setRows(saved.rows);
       setCurrentIndex(Math.min(Math.max(saved.currentIndex, 0), Math.max(saved.rows.length - 1, 0)));
+      setExportedAt(saved.exportedAt ?? null);
       setSaveStatus(`Saved ${new Date(saved.savedAt).toLocaleTimeString([], {
         hour: "numeric",
         minute: "2-digit",
@@ -274,7 +302,7 @@ export default function CsvCoder() {
     }, 250);
 
     return () => window.clearTimeout(timeoutId);
-  }, [currentIndex, fields, fileName, firstName, hydrated, isNameConfirmed, rows]);
+  }, [currentIndex, fields, fileName, firstName, hydrated, isNameConfirmed, rows, exportedAt]);
 
   useEffect(() => {
     if (!hydrated || !isNameConfirmed) {
@@ -346,6 +374,17 @@ export default function CsvCoder() {
       return;
     }
 
+    // Check for unexported work before replacing
+    if (hasUnexportedWork(rows, exportedAt)) {
+      setPendingFile(file);
+      setModal({ type: "replace-csv", fileName: file.name });
+      return;
+    }
+
+    await loadCsvFile(file);
+  }
+
+  async function loadCsvFile(file: File) {
     setError("");
 
     try {
@@ -368,6 +407,7 @@ export default function CsvCoder() {
       setRows(randomizeRows(parsedRows.map((row) => normalizeRow(row, nextFields))));
       setCurrentIndex(0);
       setIsOverview(false);
+      setExportedAt(null);
     } catch (parseError) {
       setError(parseError instanceof Error ? parseError.message : "CSV could not be parsed.");
     }
@@ -488,6 +528,8 @@ export default function CsvCoder() {
     setIsOverview(false);
     setError("");
     setSaveStatus("Not saved");
+    setExportedAt(null);
+    setPendingFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -514,6 +556,17 @@ export default function CsvCoder() {
     setModal(null);
   }
 
+  async function confirmReplaceCsv() {
+    if (!modal || modal.type !== "replace-csv" || !pendingFile) {
+      return;
+    }
+
+    setModal(null);
+    const file = pendingFile;
+    setPendingFile(null);
+    await loadCsvFile(file);
+  }
+
   async function exportCsv() {
     const exportRows = rows.map((row) => {
       const nextRow = normalizeRow(row, fields);
@@ -527,6 +580,7 @@ export default function CsvCoder() {
     try {
       await writeDownload(csv, getExportName(fileName, firstName));
       setError("");
+      setExportedAt(new Date().toISOString());
     } catch (exportError) {
       setError(exportError instanceof Error ? exportError.message : "CSV export failed.");
     }
@@ -557,9 +611,11 @@ export default function CsvCoder() {
       onCancel={() => {
         setError("");
         setModal(null);
+        setPendingFile(null);
       }}
       onConfirmRename={confirmRename}
       onConfirmStartOver={confirmStartOver}
+      onConfirmReplaceCsv={confirmReplaceCsv}
       onRenameInput={(value) => setModal({ type: "rename", value })}
     />
   ) : null;
@@ -980,13 +1036,12 @@ export default function CsvCoder() {
                   className={`${styles.field} mt-2 min-h-32 resize-y px-3 py-2 text-sm leading-6`}
                   id="notes"
                   onFocus={keepNotesVisible}
-                  onInput={(event) =>
-                    updateCurrentRow(
-                      NOTES_FIELD,
-                      event.currentTarget.value.trim() ? event.currentTarget.value : "NA",
-                    )
-                  }
-                  value={isBlankOrNA(currentRow?.[NOTES_FIELD]) ? "" : currentRow?.[NOTES_FIELD] ?? ""}
+                  onInput={(event) => {
+                    const value = event.currentTarget.value;
+                    // Only convert to NA if explicitly cleared (empty string), not for whitespace/newlines
+                    updateCurrentRow(NOTES_FIELD, value === "" ? "NA" : value);
+                  }}
+                  value={currentRow?.[NOTES_FIELD] === "NA" ? "" : currentRow?.[NOTES_FIELD] ?? ""}
                 />
               </div>
             </div>

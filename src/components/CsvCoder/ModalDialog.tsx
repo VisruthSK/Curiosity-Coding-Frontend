@@ -7,6 +7,7 @@ type ModalDialogProps = {
   onCancel: () => void;
   onConfirmRename: () => void;
   onConfirmStartOver: () => void;
+  onConfirmReplaceCsv: () => void;
   onRenameInput: (value: string) => void;
 };
 
@@ -16,9 +17,11 @@ export function ModalDialog({
   onCancel,
   onConfirmRename,
   onConfirmStartOver,
+  onConfirmReplaceCsv,
   onRenameInput,
 }: ModalDialogProps) {
   const isRename = modal.type === "rename";
+  const isReplaceCsv = modal.type === "replace-csv";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-950/35 px-4 backdrop-blur-sm dark:bg-black/55">
@@ -28,7 +31,7 @@ export function ModalDialog({
         role="dialog"
       >
         <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
-          {isRename ? "Rename coder" : "Start over?"}
+          {isRename ? "Rename coder" : isReplaceCsv ? "Replace current CSV?" : "Start over?"}
         </h2>
 
         {isRename ? (
@@ -50,6 +53,11 @@ export function ModalDialog({
             />
             {error ? <p className="mt-3 text-sm text-red-700 dark:text-red-400">{error}</p> : null}
           </>
+        ) : isReplaceCsv ? (
+          <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-400">
+            This CSV has coded work that has not been exported. Export before starting a new file,
+            or continue and lose the current progress.
+          </p>
         ) : (
           <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-400">
             {modal.target === "signin"
@@ -60,8 +68,11 @@ export function ModalDialog({
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <Button onClick={onCancel}>Cancel</Button>
-          <Button onClick={isRename ? onConfirmRename : onConfirmStartOver} variant="primary">
-            {isRename ? "Save" : "Start over"}
+          <Button
+            onClick={isRename ? onConfirmRename : isReplaceCsv ? onConfirmReplaceCsv : onConfirmStartOver}
+            variant="primary"
+          >
+            {isRename ? "Save" : isReplaceCsv ? "Replace" : "Start over"}
           </Button>
         </div>
       </section>

@@ -138,7 +138,7 @@ test("keyboard navigation remains usable on cramped desktop", async ({ page }) =
   await openSeededCodingSession(page, { width: 1280, height: 720 });
 
   await page.locator("main header").click();
-  await page.keyboard.press("Shift+Enter");
+  await page.keyboard.press("Control+Enter");
   await expect(page.getByText(`Question 2 of ${ROW_COUNT}`)).toBeVisible();
 
   await page.keyboard.press("Shift+Tab");

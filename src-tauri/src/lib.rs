@@ -2,6 +2,7 @@ use std::{fs, path::Path};
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
+use url::Url;
 
 #[tauri::command]
 async fn export_csv(app: AppHandle, file_name: String, content: String) -> Result<(), String> {
@@ -25,9 +26,30 @@ async fn export_csv(app: AppHandle, file_name: String, content: String) -> Resul
 
 #[tauri::command]
 fn open_external_url(app: AppHandle, url: String) -> Result<(), String> {
+    let validated = validate_external_url(&url)?;
     app.opener()
-        .open_url(&url, None::<&str>)
+        .open_url(validated.as_str(), None::<&str>)
         .map_err(|e| format!("Failed to open URL: {e}"))
+}
+
+/// Validates a URL against the allowlist of permitted external domains.
+/// Returns the canonical URL string if valid, or an error message if not.
+fn validate_external_url(raw: &str) -> Result<String, String> {
+    let parsed = Url::parse(raw).map_err(|_| "Invalid URL".to_string())?;
+
+    if parsed.scheme() != "https" {
+        return Err("Only HTTPS URLs are allowed".to_string());
+    }
+
+    const ALLOWED_HOSTS: &[&str] = &["www.dropbox.com", "docs.google.com"];
+
+    let host = parsed.host_str().ok_or("URL must have a host")?;
+
+    if !ALLOWED_HOSTS.contains(&host) {
+        return Err(format!("Domain '{host}' is not allowed"));
+    }
+
+    Ok(parsed.to_string())
 }
 
 fn sanitize_export_name(file_name: &str) -> String {
@@ -68,7 +90,7 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{sanitize_export_name, write_csv_file};
+    use super::{sanitize_export_name, validate_external_url, write_csv_file};
     use serde_json::Value;
     use std::{
         fs::{self, read_to_string},
@@ -95,6 +117,53 @@ mod tests {
     fn falls_back_for_blank_export_names() {
         assert_eq!(sanitize_export_name("   "), "coded-data.csv");
     }
+
+    // ── URL validation tests ───────────────────────────────────────────
+
+    #[test]
+    fn allows_dropbox_https_url() {
+        assert!(validate_external_url("https://www.dropbox.com/some/rubric").is_ok());
+    }
+
+    #[test]
+    fn allows_google_docs_https_url() {
+        assert!(validate_external_url("https://docs.google.com/document/d/abc123").is_ok());
+    }
+
+    #[test]
+    fn rejects_http_url() {
+        let err = validate_external_url("http://www.dropbox.com/rubric")
+            .expect_err("HTTP should be rejected");
+        assert!(err.contains("HTTPS"));
+    }
+
+    #[test]
+    fn rejects_non_allowlisted_domain() {
+        let err = validate_external_url("https://evil.example.com/payload")
+            .expect_err("non-allowlisted domain should be rejected");
+        assert!(err.contains("evil.example.com"));
+    }
+
+    #[test]
+    fn rejects_malformed_url() {
+        assert!(validate_external_url("not a url").is_err());
+    }
+
+    #[test]
+    fn rejects_javascript_scheme() {
+        let err = validate_external_url("javascript:alert(1)")
+            .expect_err("javascript scheme should be rejected");
+        assert!(err.contains("HTTPS") || err.contains("Invalid"));
+    }
+
+    #[test]
+    fn rejects_file_scheme() {
+        let err = validate_external_url("file:///C:/secrets.txt")
+            .expect_err("file scheme should be rejected");
+        assert!(err.contains("HTTPS") || err.contains("Invalid"));
+    }
+
+    // ── Updater config test ────────────────────────────────────────────
 
     #[test]
     fn release_config_generates_signed_updater_metadata() {
