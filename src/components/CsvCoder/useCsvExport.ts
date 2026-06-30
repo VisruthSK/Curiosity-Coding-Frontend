@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 import { formatCsv } from "./csv";
-import { normalizeRow } from "./SessionStorage";
+import { formatName, normalizeRow } from "./SessionStorage";
 import type { CsvRow } from "./types";
 
 const LABEL_FIELD = "Label";
@@ -13,14 +13,6 @@ function isTauriDesktop() {
 
 function getBaseName(fileName: string) {
   return fileName.replace(/\.[^/.]+$/, "");
-}
-
-function formatName(value: string) {
-  return value
-    .trim()
-    .replace(/\s+/g, " ")
-    .toLowerCase()
-    .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 }
 
 function getExportName(fileName: string, firstName: string) {
@@ -70,9 +62,6 @@ export function useCsvExport(
       .map((row) => {
         // Normalize fields, ensuring only relevant fields are exported
         const nextRow = normalizeRow(row, fields);
-        
-        // Strip out the internal metadata fields
-        delete nextRow["__originalIndex"];
         
         // Fallback default NA values
         const isBlankOrNA = (val: unknown) =>

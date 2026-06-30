@@ -1,4 +1,4 @@
-import { Button, Icon } from "./ui";
+import { Button, Icon, styles } from "./ui";
 import type { CsvRow } from "./types";
 
 const RUBRIC_URL =
@@ -69,7 +69,7 @@ export function QuestionPanel({
         </div>
         <div className="flex flex-wrap gap-2 md:ml-auto md:flex-nowrap md:justify-end">
           <a
-            className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+            className={styles.smallSecondaryButton}
             href={RUBRIC_URL}
             onClick={(event) => openExternalLink(event, RUBRIC_URL)}
             rel="noopener noreferrer"
@@ -79,7 +79,7 @@ export function QuestionPanel({
             <Icon name="externalLink" size={15} />
           </a>
           <a
-            className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:border-stone-400 hover:bg-stone-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:border-neutral-600 dark:hover:bg-neutral-800"
+            className={styles.smallSecondaryButton}
             href={INSTRUCTOR_DIARY_URL}
             onClick={(event) => openExternalLink(event, INSTRUCTOR_DIARY_URL)}
             rel="noopener noreferrer"
