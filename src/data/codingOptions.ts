@@ -53,17 +53,17 @@ export const codingOptions: CodingOption[] = [
   {
     code: "2c",
     group: "2",
-    label: "Communication, terminology, or interpretation",
+    label: "Clarification on communication, terminology, or interpretation",
   },
   {
     code: "2d",
     group: "2",
-    label: "Extension to current content",
+    label: "Extension to current content (next step, future topic, further exploration)",
   },
   {
     code: "2e",
     group: "2",
-    label: "Application or use of methods outside class (next step, future topic, further exploration)",
+    label: "Application or use of methods outside class (real world practical use; is it used in general)",
   },
   {
     code: "2f",
@@ -98,7 +98,7 @@ export const codingOptions: CodingOption[] = [
   {
     code: "3c",
     group: "3",
-    label: "Research process, study design, or skepticism",
+    label: "Research process, study design, or skepticism (drawing conclusions, communicating/consumption of results)",
   },
 ];
 
