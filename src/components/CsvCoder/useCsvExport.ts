@@ -9,7 +9,13 @@ function getBaseName(fileName: string) {
 }
 
 function getExportName(fileName: string, firstName: string) {
-  const baseName = getBaseName(fileName).trim() || "coded-data";
+  let baseName = getBaseName(fileName).trim() || "coded-data";
+  if (baseName.toLowerCase().includes("compare")) {
+    baseName = baseName.replace(/compare/i, (match) => {
+      return match[0] === "C" ? "Reference" : "reference";
+    });
+    return `${baseName}.csv`;
+  }
   const safeFirstName = formatName(firstName).replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_");
   return `${baseName} ${safeFirstName}.csv`;
 }
@@ -46,17 +52,27 @@ export function useCsvExport(
   const exportCsv = async () => {
     setError("");
 
+    const isCompare = fileName.toLowerCase().includes("compare");
+    const exportFields = isCompare
+      ? fields.filter(f => {
+          const lower = f.toLowerCase();
+          return lower === "date" || lower === "question" || lower === "student coding" || lower === "label" || lower === "notes" || lower.includes("id");
+        })
+      : fields;
+
     const exportRows = rows.map((row) => {
       // Normalize fields, ensuring only relevant fields are exported
-      const nextRow = normalizeRow(row, fields);
+      const nextRow = normalizeRow(row, exportFields);
       nextRow[LABEL_FIELD] = isBlankOrNA(nextRow[LABEL_FIELD]) ? "NA" : nextRow[LABEL_FIELD];
       nextRow[NOTES_FIELD] = isBlankOrNA(nextRow[NOTES_FIELD]) ? "NA" : nextRow[NOTES_FIELD];
-      nextRow[FLAG_FIELD] = isBlankOrNA(nextRow[FLAG_FIELD]) ? "NA" : nextRow[FLAG_FIELD];
+      if (nextRow[FLAG_FIELD] !== undefined) {
+        nextRow[FLAG_FIELD] = isBlankOrNA(nextRow[FLAG_FIELD]) ? "NA" : nextRow[FLAG_FIELD];
+      }
       
       return nextRow;
     });
 
-    const csv = formatCsv(exportRows, fields);
+    const csv = formatCsv(exportRows, exportFields);
 
     try {
       const didWrite = await writeDownload(csv, getExportName(fileName, firstName));
