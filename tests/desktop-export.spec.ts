@@ -62,7 +62,7 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
   await page.getByLabel("Select CSV file").setInputFiles(csvPath);
   await page.getByLabel("2b").check();
   await page.getByLabel("Notes").fill("Saved from desktop");
-  await expect(page.getByText("v0.1.0")).toBeVisible();
+  await expect(page.getByText("v0.2.0")).toBeVisible();
   await expect(page.getByRole("link", { name: "Rubric" })).toHaveAttribute("href", rubricUrl);
   await expect(page.getByRole("link", { name: "Instructor diary" })).toHaveAttribute("href", instructorDiaryUrl);
   await page.getByRole("link", { name: "Rubric" }).click();
