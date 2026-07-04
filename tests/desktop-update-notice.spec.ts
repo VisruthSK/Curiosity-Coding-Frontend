@@ -71,7 +71,7 @@ test("desktop update notice automatically installs and prompts for relaunch", as
   await bootDesktopApp(page, {
     updaterResult: {
       body: "Test release",
-      currentVersion: "0.1.0",
+      currentVersion: "0.2.0",
       date: "2026-06-29",
       rawJson: "{}",
       rid: 7,
@@ -113,7 +113,7 @@ test("desktop update notice logs install failures but remains silent", async ({ 
     failInstall: true,
     updaterResult: {
       body: "Test release",
-      currentVersion: "0.1.0",
+      currentVersion: "0.2.0",
       date: "2026-06-29",
       rawJson: "{}",
       rid: 7,

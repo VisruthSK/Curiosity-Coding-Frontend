@@ -1,6 +1,6 @@
 [package]
 name = "curiosity-coding"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local CSV coding interface for Curiosity student responses"
 authors = ["Visruth Srimath Kandali"]
 edition = "2021"
