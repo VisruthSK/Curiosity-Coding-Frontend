@@ -21,6 +21,16 @@ export function OverviewPanel({ rows, onOpenRow }: OverviewPanelProps) {
           const hasNotes = !isBlankOrNA(row[NOTES_FIELD]);
           const isFlagged = String(row[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE";
 
+          const keys = Object.keys(row || {});
+          const standardFieldsSet = new Set([
+            "question", "student coding", "reference", "referencenotes",
+            "vote", "votes", "totalvotes", "label", "notes", "flag", "id"
+          ]);
+          const coderKeys = keys.filter(key => {
+            const k = key.toLowerCase();
+            return !standardFieldsSet.has(k) && !k.endsWith("notes");
+          });
+
           return (
             <button
               className={
@@ -45,6 +55,33 @@ export function OverviewPanel({ rows, onOpenRow }: OverviewPanelProps) {
                 <StatusPill active={hasCoding} activeText="Coding" inactiveText="No coding" />
                 <StatusPill active={hasNotes} activeText="Note" inactiveText="No note" />
               </span>
+              {coderKeys.length > 0 && (() => {
+                const getConsensusRatio = () => {
+                  if (row["Votes"] !== undefined && row["TotalVotes"] !== undefined) {
+                    const v = String(row["Votes"]).trim();
+                    const tv = String(row["TotalVotes"]).trim();
+                    if (v && tv && v.toLowerCase() !== "na" && tv.toLowerCase() !== "na") {
+                      return `${v}/${tv}`;
+                    }
+                  }
+                  const codes = coderKeys
+                    .map(k => (row[k] || "").trim())
+                    .filter(c => c && c.toLowerCase() !== "na");
+                  if (codes.length === 0) return `0/${coderKeys.length}`;
+                  const freq: Record<string, number> = {};
+                  codes.forEach(c => {
+                    freq[c] = (freq[c] || 0) + 1;
+                  });
+                  const maxFreq = Math.max(...Object.values(freq));
+                  return `${maxFreq}/${coderKeys.length}`;
+                };
+
+                return (
+                  <div className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
+                    Agreement: <span className="font-mono bg-stone-200/50 dark:bg-neutral-800/80 border border-stone-300/30 dark:border-neutral-700/50 px-1.5 py-0.5 rounded text-[10px]">{getConsensusRatio()}</span>
+                  </div>
+                );
+              })()}
             </button>
           );
         })}

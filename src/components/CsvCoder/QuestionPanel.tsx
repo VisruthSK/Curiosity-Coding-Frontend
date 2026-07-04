@@ -55,6 +55,48 @@ export function QuestionPanel({
   questionSectionRef,
   questionNumber,
 }: QuestionPanelProps) {
+  const standardFieldsSet = new Set([
+    "question", "student coding", "reference", "referencenotes",
+    "vote", "votes", "totalvotes", "label", "notes", "flag", "id"
+  ]);
+
+  const keys = Object.keys(currentRow || {});
+  const coderKeys = keys.filter(key => {
+    const k = key.toLowerCase();
+    return !standardFieldsSet.has(k) && !k.endsWith("notes");
+  });
+
+  const coderRelatedKeysSet = new Set<string>();
+  coderKeys.forEach(key => {
+    coderRelatedKeysSet.add(key.toLowerCase());
+    coderRelatedKeysSet.add((key + "notes").toLowerCase());
+  });
+
+  const filteredDetailFields = detailFields.filter(
+    (field) => {
+      const fLower = field.toLowerCase();
+      return !coderRelatedKeysSet.has(fLower) && fLower !== "totalvotes";
+    }
+  );
+
+  const codeToCoders: Record<string, { name: string; notes: string }[]> = {};
+  coderKeys.forEach(key => {
+    const code = (currentRow?.[key] || "").trim();
+    if (!code) return;
+    const notesKey = keys.find(k => k.toLowerCase() === (key.toLowerCase() + "notes"));
+    const notes = notesKey ? (currentRow?.[notesKey] || "").trim() : "";
+    if (!codeToCoders[code]) {
+      codeToCoders[code] = [];
+    }
+    codeToCoders[code].push({ name: key, notes });
+  });
+
+  const hasAnyNotes = coderKeys.some(key => {
+    const notesKey = keys.find(k => k.toLowerCase() === (key.toLowerCase() + "notes"));
+    const notes = notesKey ? (currentRow?.[notesKey] || "").trim() : "";
+    return notes && notes.toLowerCase() !== "na";
+  });
+
   return (
     <section className="bg-white dark:bg-neutral-900 border border-stone-200 dark:border-neutral-800 rounded-lg p-4 sm:p-5 lg:p-6 xl:min-h-0 xl:overflow-y-auto" ref={questionSectionRef}>
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -110,7 +152,7 @@ export function QuestionPanel({
       </div>
 
       <dl className="grid gap-3 lg:gap-4">
-        {detailFields.map((field) => (
+        {filteredDetailFields.map((field) => (
           <div
             className={
               field === "Question"
@@ -119,7 +161,9 @@ export function QuestionPanel({
             }
             key={field}
           >
-            <dt className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-500">{field}</dt>
+            <dt className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-500">
+              {field === "TotalVotes" ? "Total Votes" : field}
+            </dt>
             <dd
               className={
                 field === "Question"
@@ -127,10 +171,113 @@ export function QuestionPanel({
                   : "whitespace-pre-wrap text-sm leading-6 text-neutral-800 dark:text-neutral-200"
               }
             >
-              {currentRow?.[field] || <span className="text-neutral-400 dark:text-neutral-600">Blank</span>}
+              {(() => {
+                const fLower = field.toLowerCase();
+                if (fLower === "vote") {
+                  let hasMajority = false;
+                  let majorityCode = "";
+                  
+                  if (currentRow?.["Votes"] !== undefined && currentRow?.["TotalVotes"] !== undefined) {
+                    const votesVal = parseInt(String(currentRow["Votes"]).trim(), 10);
+                    const totalVotesVal = parseInt(String(currentRow["TotalVotes"]).trim(), 10);
+                    if (!isNaN(votesVal) && !isNaN(totalVotesVal) && totalVotesVal > 0) {
+                      if (votesVal > totalVotesVal / 2) {
+                        hasMajority = true;
+                        majorityCode = String(currentRow["Vote"] || "").trim();
+                      }
+                    }
+                  }
+                  
+                  if (!hasMajority) {
+                    const codes = coderKeys
+                      .map(k => (currentRow?.[k] || "").trim())
+                      .filter(c => c && c.toLowerCase() !== "na");
+                    if (codes.length > 0) {
+                      const freq: Record<string, number> = {};
+                      codes.forEach(c => {
+                        freq[c] = (freq[c] || 0) + 1;
+                      });
+                      const maxFreq = Math.max(...Object.values(freq));
+                      const codeWithMax = Object.keys(freq).find(c => freq[c] === maxFreq);
+                      if (maxFreq > coderKeys.length / 2 && codeWithMax) {
+                        hasMajority = true;
+                        majorityCode = codeWithMax;
+                      }
+                    }
+                  }
+                  
+                  return hasMajority && majorityCode && majorityCode.toLowerCase() !== "na" ? majorityCode : "NA";
+                }
+                
+                if (fLower === "votes") {
+                  if (currentRow?.["Votes"] !== undefined && currentRow?.["TotalVotes"] !== undefined) {
+                    const v = String(currentRow["Votes"]).trim();
+                    const tv = String(currentRow["TotalVotes"]).trim();
+                    if (v && tv && v.toLowerCase() !== "na" && tv.toLowerCase() !== "na") {
+                      return `${v}/${tv}`;
+                    }
+                  }
+                  const codes = coderKeys
+                    .map(k => (currentRow?.[k] || "").trim())
+                    .filter(c => c && c.toLowerCase() !== "na");
+                  const freq: Record<string, number> = {};
+                  codes.forEach(c => {
+                    freq[c] = (freq[c] || 0) + 1;
+                  });
+                  const maxFreq = Math.max(...Object.values(freq));
+                  return `${codes.length > 0 ? maxFreq : 0}/${coderKeys.length}`;
+                }
+                
+                return currentRow?.[field] || <span className="text-neutral-400 dark:text-neutral-600">Blank</span>;
+              })()}
             </dd>
           </div>
         ))}
+
+        {Object.keys(codeToCoders).length > 0 && (
+          <div className="grid gap-1 border-b border-stone-100 pb-3 dark:border-neutral-800 last:border-b-0">
+            <dt className="text-xs font-semibold uppercase text-neutral-500 dark:text-neutral-500">Codings</dt>
+            <dd className="mt-1 flex flex-wrap gap-2">
+              {Object.entries(codeToCoders).map(([code, coders]) => {
+                return (
+                  <span
+                    key={code}
+                    className="inline-flex items-center gap-1.5 rounded bg-blue-50 px-2.5 py-1 text-sm font-medium text-blue-700 dark:bg-blue-950/30 dark:text-blue-300 border border-blue-100 dark:border-blue-900/30 transition-colors"
+                  >
+                    <span className="font-semibold">{code}</span>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">({coders.length})</span>
+                  </span>
+                );
+              })}
+            </dd>
+            <details className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
+              <summary className="cursor-pointer font-medium hover:text-neutral-900 dark:hover:text-neutral-200">
+                Show detailed coder notes
+              </summary>
+              <div className="mt-2 grid gap-1 border-t border-stone-100 pt-2 dark:border-neutral-800">
+                {coderKeys.map(key => {
+                  const code = (currentRow?.[key] || "").trim();
+                  const notesKey = keys.find(k => k.toLowerCase() === (key.toLowerCase() + "notes"));
+                  const notes = notesKey ? (currentRow?.[notesKey] || "").trim() : "";
+                  const showNotesVal = notes && notes.toLowerCase() !== "na" ? notes : "";
+                  return (
+                    <div key={key} className={`grid gap-4 py-0.5 ${hasAnyNotes ? "grid-cols-2" : "grid-cols-1"}`}>
+                      <div className="flex justify-between">
+                        <span className="font-semibold text-neutral-700 dark:text-neutral-300">{key}:</span>
+                        <span className="font-mono text-neutral-900 dark:text-neutral-100">{code || "NA"}</span>
+                      </div>
+                      {hasAnyNotes && (
+                        <div className="text-neutral-600 dark:text-neutral-400 text-right truncate" title={showNotesVal}>
+                          {showNotesVal || <span className="text-neutral-300 dark:text-neutral-700">—</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
+          </div>
+        )}
       </dl>
     </section>
   );
