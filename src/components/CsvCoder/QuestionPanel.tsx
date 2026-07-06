@@ -39,6 +39,7 @@ function openExternalLink(event: MouseEvent, url: string) {
 type QuestionPanelProps = {
   currentRow: CsvRow | undefined;
   detailFields: string[];
+  isCompareFile: boolean;
   selectedCodes: string[];
   isCurrentRowFlagged: boolean;
   onToggleFlag: () => void;
@@ -49,6 +50,7 @@ type QuestionPanelProps = {
 export function QuestionPanel({
   currentRow,
   detailFields,
+  isCompareFile,
   selectedCodes,
   isCurrentRowFlagged,
   onToggleFlag,
@@ -61,10 +63,12 @@ export function QuestionPanel({
   ]);
 
   const keys = Object.keys(currentRow || {});
-  const coderKeys = keys.filter(key => {
-    const k = key.toLowerCase();
-    return !standardFieldsSet.has(k) && !k.endsWith("notes");
-  });
+  const coderKeys = isCompareFile
+    ? keys.filter(key => {
+        const k = key.toLowerCase();
+        return !standardFieldsSet.has(k) && !k.endsWith("notes");
+      })
+    : [];
 
   const coderRelatedKeysSet = new Set<string>();
   coderKeys.forEach(key => {

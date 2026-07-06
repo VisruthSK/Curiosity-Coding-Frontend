@@ -155,6 +155,7 @@ export default function CsvCoder() {
   );
   const rowNumber = sessionState.rows.length ? sessionState.currentIndex + 1 : 0;
   const isDesktop = hydrated && isTauriDesktop();
+  const isCompareFile = sessionState.fileName.toLowerCase().includes("compare");
 
   const confirmName = useCallback((event: Event) => {
     event.preventDefault();
@@ -550,6 +551,7 @@ export default function CsvCoder() {
               <QuestionPanel
                 currentRow={currentRow}
                 detailFields={detailFields}
+                isCompareFile={isCompareFile}
                 selectedCodes={selectedCodes}
                 isCurrentRowFlagged={isCurrentRowFlagged}
                 onToggleFlag={() => dispatch({ type: "toggle_flag" })}

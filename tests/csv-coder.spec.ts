@@ -64,6 +64,7 @@ test("codes rows, reviews completion, and exports with title-cased name", async 
 
   await page.getByLabel("Select CSV file").setInputFiles(csvPath);
   await expect(page.getByRole("heading", { name: "sample survey.csv" })).toBeVisible();
+  await expect(page.getByText("Codings", { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Amy" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -121,6 +122,66 @@ test("codes rows, reviews completion, and exports with title-cased name", async 
       "2026-01-13,Can this apply to my major?,Application,2e,NA,NA",
     ].join("\n"),
   );
+});
+
+test("does not show compare coder details for non-compare files with date columns", async ({ page }) => {
+  const normalCsvPath = createCsvFixture(
+    "ordinary coding.csv",
+    [
+      "id,Date,Question,Student Coding,Label,Notes",
+      "row-1,2026-04-01,Synthetic ordinary question?,Synthetic student coding,NA,NA",
+    ].join("\n"),
+  );
+
+  await page.getByLabel("First name").fill("amy");
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await page.getByLabel("Select CSV file").setInputFiles(normalCsvPath);
+  await expect(page.getByRole("heading", { name: "ordinary coding.csv" })).toBeVisible();
+  await expect(page.getByText("Codings", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Show detailed coder notes")).toHaveCount(0);
+  await expect(page.getByText("Date:")).toHaveCount(0);
+  await expect(page.getByText("2026-04-01(1)")).toHaveCount(0);
+});
+
+test("keeps compare file fields visible for compare files", async ({ page }) => {
+  const compareCsvPath = createCsvFixture(
+    "ordinary compare.csv",
+    [
+      "Question,Student Coding,Reference,ReferenceNotes,Vote,Votes,TotalVotes",
+      "Synthetic compare question?,Synthetic compare coding,2a,NA,NA,NA,NA",
+    ].join("\n"),
+  );
+
+  await page.getByLabel("First name").fill("amy");
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await page.getByLabel("Select CSV file").setInputFiles(compareCsvPath);
+  await expect(page.getByRole("heading", { name: "ordinary compare.csv" })).toBeVisible();
+  await expect(page.getByText("Synthetic compare question?")).toBeVisible();
+  await expect(page.getByText("Reference", { exact: true })).toBeVisible();
+});
+
+test("shows compare coder summary for compare files with coder columns", async ({ page }) => {
+  const compareCsvPath = createCsvFixture(
+    "section compare.csv",
+    [
+      "Question,Student Coding,Reference,ReferenceNotes,Ari,AriNotes,Bea,BeaNotes,Label,Notes",
+      "Compare this?,Original,2b,Reference note,2b,Ari note,2e,Bea note,NA,NA",
+    ].join("\n"),
+  );
+
+  await page.getByLabel("First name").fill("amy");
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await page.getByLabel("Select CSV file").setInputFiles(compareCsvPath);
+
+  await expect(page.getByText("Compare this?")).toBeVisible();
+  await expect(page.getByText("Codings")).toBeVisible();
+  await expect(page.getByText("Show detailed coder notes")).toBeVisible();
+  const codingsBlock = page.getByText("Codings").locator("xpath=..");
+  await expect(codingsBlock.getByText("2b").first()).toBeVisible();
+  await expect(codingsBlock.getByText("2e").first()).toBeVisible();
 });
 
 test("preserves CSV shape and escaped values on export", async ({ page }) => {
