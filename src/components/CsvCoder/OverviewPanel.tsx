@@ -3,11 +3,12 @@ import type { CsvRow } from "./types";
 import { isBlankOrNA, LABEL_FIELD, NOTES_FIELD, FLAG_FIELD } from "./utils";
 
 type OverviewPanelProps = {
+  isCompareFile: boolean;
   rows: CsvRow[];
   onOpenRow: (index: number) => void;
 };
 
-export function OverviewPanel({ rows, onOpenRow }: OverviewPanelProps) {
+export function OverviewPanel({ isCompareFile, rows, onOpenRow }: OverviewPanelProps) {
   return (
     <section className="bg-white dark:bg-neutral-900 border border-stone-200 dark:border-neutral-800 rounded-lg p-4 sm:p-5 lg:p-6 xl:col-span-2 xl:min-h-0 xl:overflow-y-auto">
       <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
@@ -26,10 +27,12 @@ export function OverviewPanel({ rows, onOpenRow }: OverviewPanelProps) {
             "question", "student coding", "reference", "referencenotes",
             "vote", "votes", "totalvotes", "label", "notes", "flag", "id"
           ]);
-          const coderKeys = keys.filter(key => {
-            const k = key.toLowerCase();
-            return !standardFieldsSet.has(k) && !k.endsWith("notes");
-          });
+          const coderKeys = isCompareFile
+            ? keys.filter(key => {
+                const k = key.toLowerCase();
+                return !standardFieldsSet.has(k) && !k.endsWith("notes");
+              })
+            : [];
 
           return (
             <button

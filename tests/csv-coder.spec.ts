@@ -50,6 +50,27 @@ test("browser mode does not show desktop window controls", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Close" })).toHaveCount(0);
 });
 
+test("loads a CSV dropped onto the select file screen", async ({ page }) => {
+  const csv = [
+    "Date,Question,Student Coding,Label,Notes",
+    "2026-05-01,Synthetic dropped question?,Synthetic dropped coding,NA,NA",
+  ].join("\n");
+
+  await page.getByLabel("First name").fill("amy");
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await page.getByText("Select CSV file").dispatchEvent("drop", {
+    dataTransfer: await page.evaluateHandle((csvText) => {
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(new File([csvText], "dropped.csv", { type: "text/csv" }));
+      return dataTransfer;
+    }, csv),
+  });
+
+  await expect(page.getByRole("heading", { name: "dropped.csv" })).toBeVisible();
+  await expect(page.getByText("Synthetic dropped question?")).toBeVisible();
+});
+
 test("codes rows, reviews completion, and exports with title-cased name", async ({
   page,
 }) => {
@@ -142,6 +163,10 @@ test("does not show compare coder details for non-compare files with date column
   await expect(page.getByText("Show detailed coder notes")).toHaveCount(0);
   await expect(page.getByText("Date:")).toHaveCount(0);
   await expect(page.getByText("2026-04-01(1)")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await expect(page.getByText(/^Agreement:/)).toHaveCount(0);
 });
 
 test("keeps compare file fields visible for compare files", async ({ page }) => {
@@ -182,6 +207,10 @@ test("shows compare coder summary for compare files with coder columns", async (
   const codingsBlock = page.getByText("Codings").locator("xpath=..");
   await expect(codingsBlock.getByText("2b").first()).toBeVisible();
   await expect(codingsBlock.getByText("2e").first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByRole("button", { name: "Export CSV" })).toBeVisible();
+  await expect(page.getByText(/^Agreement:/)).toBeVisible();
 });
 
 test("preserves CSV shape and escaped values on export", async ({ page }) => {

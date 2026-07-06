@@ -47,6 +47,7 @@ export default function CsvCoder() {
   const [showKeybindSettings, setShowKeybindSettings] = useState(false);
   const [keybindSettingsClosing, setKeybindSettingsClosing] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [isCsvDragActive, setIsCsvDragActive] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const questionSectionRef = useRef<HTMLElement | null>(null);
@@ -192,6 +193,30 @@ export default function CsvCoder() {
 
     await loadCsvFile(file);
   }, [sessionState.rows, sessionState.exportedAt, loadCsvFile]);
+
+  const handleCsvDragOver = useCallback((event: DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer!.dropEffect = "copy";
+    setIsCsvDragActive(true);
+  }, []);
+
+  const handleCsvDragLeave = useCallback((event: DragEvent) => {
+    const currentTarget = event.currentTarget as HTMLElement;
+    const relatedTarget = event.relatedTarget as Node | null;
+    if (!relatedTarget || !currentTarget.contains(relatedTarget)) {
+      setIsCsvDragActive(false);
+    }
+  }, []);
+
+  const handleCsvDrop = useCallback(async (event: DragEvent) => {
+    event.preventDefault();
+    setIsCsvDragActive(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) {
+      return;
+    }
+    await loadCsvFile(file);
+  }, [loadCsvFile]);
 
   const scrollToQuestionOnMobile = useCallback(() => {
     if (!window.matchMedia("(max-width: 767px)").matches) {
@@ -404,8 +429,15 @@ export default function CsvCoder() {
 
             <div className="mt-6 flex flex-1 flex-col">
               <label
-                className={`flex min-h-[42vh] w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 bg-stone-50 px-5 py-12 text-center dark:border-neutral-700 dark:bg-neutral-800 ${styles.interactiveSurface}`}
+                className={`flex min-h-[42vh] w-full cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed px-5 py-12 text-center ${
+                  isCsvDragActive
+                    ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/30"
+                    : `border-stone-300 bg-stone-50 dark:border-neutral-700 dark:bg-neutral-800 ${styles.interactiveSurface}`
+                }`}
                 htmlFor="csv-upload"
+                onDragLeave={handleCsvDragLeave}
+                onDragOver={handleCsvDragOver}
+                onDrop={handleCsvDrop}
               >
                 <Icon className="mb-3 text-blue-700 dark:text-blue-300" name="upload" size={28} />
                 <span className="text-base font-semibold text-neutral-950 dark:text-neutral-50">Select CSV file</span>
@@ -543,6 +575,7 @@ export default function CsvCoder() {
         <div className="grid flex-1 gap-4 xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_minmax(400px,32vw)] xl:overflow-hidden">
           {sessionState.isOverview ? (
             <OverviewPanel
+              isCompareFile={isCompareFile}
               rows={sessionState.rows}
               onOpenRow={openRow}
             />
