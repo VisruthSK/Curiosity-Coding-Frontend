@@ -66,7 +66,7 @@ export function QuestionPanel({
   const coderKeys = isCompareFile
     ? keys.filter(key => {
         const k = key.toLowerCase();
-        return !standardFieldsSet.has(k) && !k.endsWith("notes");
+        return !standardFieldsSet.has(k) && !k.endsWith("notes") && !k.endsWith("flag");
       })
     : [];
 
@@ -74,6 +74,7 @@ export function QuestionPanel({
   coderKeys.forEach(key => {
     coderRelatedKeysSet.add(key.toLowerCase());
     coderRelatedKeysSet.add((key + "notes").toLowerCase());
+    coderRelatedKeysSet.add((key + "flag").toLowerCase());
   });
 
   const filteredDetailFields = detailFields.filter(
@@ -83,22 +84,18 @@ export function QuestionPanel({
     }
   );
 
-  const codeToCoders: Record<string, { name: string; notes: string }[]> = {};
+  const codeToCoders: Record<string, { name: string; notes: string; flagged: boolean }[]> = {};
   coderKeys.forEach(key => {
     const code = (currentRow?.[key] || "").trim();
     if (!code) return;
     const notesKey = keys.find(k => k.toLowerCase() === (key.toLowerCase() + "notes"));
     const notes = notesKey ? (currentRow?.[notesKey] || "").trim() : "";
+    const flagKey = keys.find(k => k.toLowerCase() === (key.toLowerCase() + "flag"));
+    const flagged = flagKey ? String(currentRow?.[flagKey] || "").trim().toUpperCase() === "TRUE" : false;
     if (!codeToCoders[code]) {
       codeToCoders[code] = [];
     }
-    codeToCoders[code].push({ name: key, notes });
-  });
-
-  const hasAnyNotes = coderKeys.some(key => {
-    const notesKey = keys.find(k => k.toLowerCase() === (key.toLowerCase() + "notes"));
-    const notes = notesKey ? (currentRow?.[notesKey] || "").trim() : "";
-    return notes && notes.toLowerCase() !== "na";
+    codeToCoders[code].push({ name: key, notes, flagged });
   });
 
   return (
@@ -264,17 +261,25 @@ export function QuestionPanel({
                   const notesKey = keys.find(k => k.toLowerCase() === (key.toLowerCase() + "notes"));
                   const notes = notesKey ? (currentRow?.[notesKey] || "").trim() : "";
                   const showNotesVal = notes && notes.toLowerCase() !== "na" ? notes : "";
+                  const flagKey = keys.find(k => k.toLowerCase() === (key.toLowerCase() + "flag"));
+                  const flagged = flagKey ? String(currentRow?.[flagKey] || "").trim().toUpperCase() === "TRUE" : false;
+                  const showFlagVal = flagged ? "Flagged" : "";
                   return (
-                    <div key={key} className={`grid gap-4 py-0.5 ${hasAnyNotes ? "grid-cols-2" : "grid-cols-1"}`}>
+                    <div key={key} className="grid gap-4 py-0.5 grid-cols-3">
                       <div className="flex justify-between">
                         <span className="font-semibold text-neutral-700 dark:text-neutral-300">{key}:</span>
                         <span className="font-mono text-neutral-900 dark:text-neutral-100">{code || "NA"}</span>
                       </div>
-                      {hasAnyNotes && (
-                        <div className="text-neutral-600 dark:text-neutral-400 text-right truncate" title={showNotesVal}>
-                          {showNotesVal || <span className="text-neutral-300 dark:text-neutral-700">—</span>}
-                        </div>
-                      )}
+                      <div className="text-neutral-600 dark:text-neutral-400 text-right truncate" title={showNotesVal}>
+                        {showNotesVal || <span className="text-neutral-300 dark:text-neutral-700">—</span>}
+                      </div>
+                      <div className="text-neutral-600 dark:text-neutral-400 text-right truncate font-medium" title={showFlagVal}>
+                        {showFlagVal ? (
+                          <span className="text-amber-700 dark:text-amber-300">⚑ Flagged</span>
+                        ) : (
+                          <span className="text-neutral-300 dark:text-neutral-700">—</span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

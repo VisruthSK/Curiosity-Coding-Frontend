@@ -30,9 +30,16 @@ export function OverviewPanel({ isCompareFile, rows, onOpenRow }: OverviewPanelP
           const coderKeys = isCompareFile
             ? keys.filter(key => {
                 const k = key.toLowerCase();
-                return !standardFieldsSet.has(k) && !k.endsWith("notes");
+                return !standardFieldsSet.has(k) && !k.endsWith("notes") && !k.endsWith("flag");
               })
             : [];
+
+          // Check flags per coder
+          const coderFlags = coderKeys.map(key => {
+            const flagKey = keys.find(k => k.toLowerCase() === (key.toLowerCase() + "flag"));
+            const flagged = flagKey ? String(row[flagKey] || "").trim().toUpperCase() === "TRUE" : false;
+            return { coder: key, flagged };
+          });
 
           return (
             <button
@@ -90,19 +97,34 @@ export function OverviewPanel({ isCompareFile, rows, onOpenRow }: OverviewPanelP
                 const isNoMajority = votesVal <= totalVotesVal / 2;
                 const highlightRed = isNoMajority && !hasCoding;
 
+                // Get flagged coder names
+                const flaggedCount = coderFlags.filter(f => f.flagged).length;
+
                 return (
-                  <div className="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
-                    Agreement:{" "}
-                    <span
-                      className={`font-mono px-1.5 py-0.5 rounded text-[10px] border transition-colors ${
-                        highlightRed
-                          ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300 dark:border-red-900/30 font-semibold"
-                          : "bg-stone-200/50 dark:bg-neutral-800/80 border-stone-300/30 dark:border-neutral-700/50"
-                      }`}
-                    >
-                      {ratioText}
-                    </span>
-                  </div>
+                  <>
+                    <div className="flex items-center gap-2 text-[11px] text-neutral-500 dark:text-neutral-400 font-medium">
+                      <div>
+                        Agreement:{" "}
+                        <span
+                          className={`font-mono px-1.5 py-0.5 rounded text-[10px] border transition-colors ${
+                            highlightRed
+                              ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300 dark:border-red-900/30 font-semibold"
+                              : "bg-stone-200/50 dark:bg-neutral-800/80 border-stone-300/30 dark:border-neutral-700/50"
+                          }`}
+                        >
+                          {ratioText}
+                        </span>
+                      </div>
+                      {flaggedCount > 0 && (
+                        <div>
+                          Flags:{" "}
+                          <span className="font-mono px-1.5 py-0.5 rounded text-[10px] border border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/20 dark:text-amber-300">
+                            {flaggedCount}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 );
               })()}
             </button>
