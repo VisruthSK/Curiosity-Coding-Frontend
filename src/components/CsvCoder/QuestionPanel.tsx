@@ -66,7 +66,9 @@ export function QuestionPanel({
   const coderKeys = isCompareFile
     ? keys.filter(key => {
         const k = key.toLowerCase();
-        return !standardFieldsSet.has(k) && !k.endsWith("notes") && !k.endsWith("flag");
+        const value = String(currentRow?.[key] ?? "").trim();
+        return !standardFieldsSet.has(k) && !k.endsWith("notes") && !k.endsWith("flag") &&
+          value !== "" && value.toLowerCase() !== "na";
       })
     : [];
 
@@ -77,12 +79,17 @@ export function QuestionPanel({
     coderRelatedKeysSet.add((key + "flag").toLowerCase());
   });
 
-  const filteredDetailFields = detailFields.filter(
-    (field) => {
-      const fLower = field.toLowerCase();
-      return !coderRelatedKeysSet.has(fLower) && fLower !== "totalvotes";
-    }
-  );
+  const requiredCompareFields = [
+    "Student Coding", "Reference", "ReferenceNotes", "ReferenceFlag", "Vote", "Votes",
+  ];
+  const compareFields = [...new Set([...detailFields, ...requiredCompareFields])];
+  const filteredDetailFields = compareFields.filter((field) => {
+    const fLower = field.toLowerCase();
+    if (coderRelatedKeysSet.has(fLower) || fLower === "totalvotes") return false;
+    if (requiredCompareFields.some((required) => required.toLowerCase() === fLower)) return true;
+    const value = String(currentRow?.[field] ?? "").trim();
+    return value !== "" && value.toLowerCase() !== "na";
+  });
 
   const codeToCoders: Record<string, { name: string; notes: string; flagged: boolean }[]> = {};
   coderKeys.forEach(key => {
@@ -229,7 +236,8 @@ export function QuestionPanel({
                   return `${codes.length > 0 ? maxFreq : 0}/${coderKeys.length}`;
                 }
                 
-                return currentRow?.[field] || <span className="text-neutral-400 dark:text-neutral-600">Blank</span>;
+                const value = String(currentRow?.[field] ?? "").trim();
+                return value && value.toLowerCase() !== "na" ? value : "NA";
               })()}
             </dd>
           </div>
