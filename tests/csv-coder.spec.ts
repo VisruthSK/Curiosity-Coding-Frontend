@@ -476,7 +476,8 @@ test("keybind settings popover rebinds shortcuts", async ({ page }) => {
   // Should show the new binding
   await expect(page.getByText("Ctrl+↓")).toBeVisible();
 
-  // Close popover by clicking outside (on the question text)
+  // The outside-click handler activates after the desktop webview delay.
+  await page.waitForTimeout(150);
   await page.getByText("First question?").click();
   await expect(page.getByText("Keyboard shortcuts")).toHaveCount(0);
 
@@ -494,7 +495,8 @@ test("keybind settings popover rebinds shortcuts", async ({ page }) => {
   await page.getByText("Reset to defaults").click();
   await expect(page.getByRole("button", { name: "Rebind Next shortcut" })).toHaveText("Ctrl+Enter");
 
-  // Close popover by clicking outside
+  // Wait for the outside-click handler to activate.
+  await page.waitForTimeout(150);
   await page.getByText("Second question?").click();
 
   // Ctrl+Enter should work again after reset
@@ -800,4 +802,58 @@ test("does not warn after reload when replacing a successfully exported CSV", as
   await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
   await expect(page.getByText("Replacement question?")).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("reviews alignment disagreements first with stable question numbers", async ({ page }) => {
+  const csvPath = createCsvFixture("class Ari Alignment.csv", [
+    "Class,id,Day,Date,Question,Student Coding,Reference,ReferenceNotes,ReferenceFlag,Ari,AriNotes,AriFlag",
+    "Class A,1,Day 1,2026-01-01,First?,Original,2a,,,2a,,",
+    "Class A,2,Day 1,2026-01-01,Second?,Original,2a,,,2b,,",
+    "Class A,3,Day 1,2026-01-01,Third?,Original,2a,,,,,",
+    "Class A,4,Day 1,2026-01-01,Fourth?,Original,2a,,,2b,,",
+  ].join("\n"));
+  await page.getByLabel("First name").fill("ari");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+  await expect(page.getByText("Second?")).toBeVisible();
+  await expect(page.getByText("Question 2", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("2a")).toBeChecked();
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  const cards = page.getByRole("button").filter({ hasText: /^Question [1-4]/ });
+  await expect(cards).toHaveCount(4);
+  await expect(cards.nth(0)).toContainText("Question 2");
+  await expect(cards.nth(0)).toContainText("Disagrees");
+  await expect(cards.nth(1)).toContainText("Question 4");
+  await expect(cards.nth(1)).toContainText("Disagrees");
+  await expect(cards.nth(2)).toContainText("Question 1");
+  await expect(cards.nth(2)).toContainText("Agrees");
+  await expect(cards.nth(3)).toContainText("Question 3");
+  await expect(cards.nth(3)).toContainText("Unanswered");
+  await expect(cards.nth(0)).not.toContainText("No coding");
+  await cards.nth(0).click();
+  const codings = page.getByText("Codings").locator("xpath=..");
+  await expect(codings.getByText("2b").first()).toBeVisible();
+  await expect(codings.getByText("Class A")).toHaveCount(0);
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Fourth?")).toBeVisible();
+  await expect(page.getByText("Question 4", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("First?")).toBeVisible();
+  await expect(page.getByText("Question 1", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Third?")).toBeVisible();
+  await expect(page.getByText("Question 3", { exact: true })).toBeVisible();
+});
+
+
+test("disagreement comparisons display the original survey day", async ({ page }) => {
+  const csvPath = createCsvFixture("disagree Compare.csv", [
+    "id,Day,Date,Class,Question,Student Coding,Vote,Votes,TotalVotes,Ari,AriNotes,AriFlag,Bea,BeaNotes,BeaFlag",
+    "1,I Wonder #17,2025-11-25,Example,Why?,Original,2a,1,2,2a,,,2b,,",
+  ].join("\n"));
+  await page.getByLabel("First name").fill("ari");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+  await expect(page.getByText("I Wonder #17", { exact: true })).toBeVisible();
+  await expect(page.getByText("disagree", { exact: true })).toHaveCount(0);
 });

@@ -154,9 +154,10 @@ export default function CsvCoder() {
     () => sessionState.rows.filter((row) => !isBlankOrNA(row[LABEL_FIELD])).length,
     [sessionState.rows],
   );
-  const rowNumber = sessionState.rows.length ? sessionState.currentIndex + 1 : 0;
+  const rowNumber = sessionState.rows.length ? Number(currentRow?.__QuestionNumber) || sessionState.currentIndex + 1 : 0;
   const isDesktop = hydrated && isTauriDesktop();
-  const isCompareFile = sessionState.fileName.toLowerCase().includes("compare");
+  const isAlignmentFile = /alignment/i.test(sessionState.fileName);
+  const isCompareFile = /compare|alignment/i.test(sessionState.fileName);
 
   const confirmName = useCallback((event: Event) => {
     event.preventDefault();
@@ -576,6 +577,7 @@ export default function CsvCoder() {
           {sessionState.isOverview ? (
             <OverviewPanel
               isCompareFile={isCompareFile}
+              isAlignmentFile={isAlignmentFile}
               rows={sessionState.rows}
               onOpenRow={openRow}
             />
@@ -585,11 +587,12 @@ export default function CsvCoder() {
                 currentRow={currentRow}
                 detailFields={detailFields}
                 isCompareFile={isCompareFile}
+                isAlignmentFile={isAlignmentFile}
                 selectedCodes={selectedCodes}
                 isCurrentRowFlagged={isCurrentRowFlagged}
                 onToggleFlag={() => dispatch({ type: "toggle_flag" })}
                 questionSectionRef={questionSectionRef}
-                questionNumber={sessionState.currentIndex + 1}
+                questionNumber={Number(currentRow?.__QuestionNumber) || sessionState.currentIndex + 1}
               />
               <CodingPanel
                 currentRow={currentRow}

@@ -56,9 +56,9 @@ export function useCsvExport(
     const exportFields = isCompare
       ? fields.filter(f => {
           const lower = f.toLowerCase();
-          return lower === "date" || lower === "question" || lower === "student coding" || lower === "label" || lower === "notes" || lower.includes("id");
+          return ["class", "id", "day", "date", "question", "student coding", "label", "notes", "flag"].includes(lower);
         })
-      : fields;
+      : fields.filter(f => f !== "__QuestionNumber");
 
     const exportRows = rows.map((row) => {
       // Normalize fields, ensuring only relevant fields are exported

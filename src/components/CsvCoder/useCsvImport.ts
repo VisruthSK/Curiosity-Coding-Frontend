@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import { parseCsvText } from "./csv";
 import { ensureFlagField, normalizeRow } from "./SessionStorage";
 import type { CsvRow } from "./types";
-import { LABEL_FIELD, NOTES_FIELD } from "./utils";
+import { alignmentStatus, coderFields, LABEL_FIELD, NOTES_FIELD } from "./utils";
 
 function randomizeRows(rowsToRandomize: CsvRow[]) {
   const nextRows = [...rowsToRandomize];
@@ -38,11 +38,14 @@ export function useCsvImport(
 
       nextFields = ensureFlagField(nextFields);
 
+      const isAlignment = fileName.toLowerCase().includes("alignment");
       const hasReference = parsedFields.includes("Reference");
       const hasReferenceNotes = parsedFields.includes("ReferenceNotes");
 
-      const preparedRows = parsedRows.map((row) => {
+      nextFields.push("__QuestionNumber");
+      const preparedRows = parsedRows.map((row, index) => {
         const normalized = normalizeRow(row, nextFields);
+        normalized.__QuestionNumber = String(index + 1);
         if (hasReference && (!normalized[LABEL_FIELD] || normalized[LABEL_FIELD].toLowerCase() === "na")) {
           normalized[LABEL_FIELD] = row["Reference"] || "";
         }
@@ -54,16 +57,8 @@ export function useCsvImport(
 
       let sortedRows = preparedRows;
       const isCompare = fileName.toLowerCase().includes("compare");
-      if (isCompare) {
-        const keys = Object.keys(preparedRows[0] || {});
-        const standardFieldsSet = new Set([
-          "question", "student coding", "reference", "referencenotes",
-          "vote", "votes", "totalvotes", "label", "notes", "flag", "id"
-        ]);
-        const coderKeys = keys.filter(key => {
-          const k = key.toLowerCase();
-          return !standardFieldsSet.has(k) && !k.endsWith("notes");
-        });
+      if (isCompare || isAlignment) {
+        const coderKeys = coderFields(preparedRows[0] || {});
 
         const getAgreementScore = (row: CsvRow) => {
           const codes = coderKeys
@@ -78,7 +73,13 @@ export function useCsvImport(
           return maxFreq / codes.length;
         };
 
-        sortedRows = [...preparedRows].sort((a, b) => getAgreementScore(a) - getAgreementScore(b));
+        sortedRows = [...preparedRows].sort((a, b) => {
+          if (isAlignment) {
+            const disagreement = (row: CsvRow) => alignmentStatus(row) === "Disagrees" ? 0 : 1;
+            return disagreement(a) - disagreement(b) || Number(a.__QuestionNumber) - Number(b.__QuestionNumber);
+          }
+          return getAgreementScore(a) - getAgreementScore(b) || Number(a.__QuestionNumber) - Number(b.__QuestionNumber);
+        });
       } else {
         sortedRows = randomizeRows(preparedRows);
       }
