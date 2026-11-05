@@ -10,8 +10,8 @@ function createCsvFile(name: string) {
   writeFileSync(
     filePath,
     [
-      "Date,Question,Student Coding,Label,Notes",
-      '2026-05-01,"Can I code offline?",Offline check,NA,NA',
+      "Class,id,Day,Date,Question,Student Coding,Label,Notes,Flag",
+      'Example,1,Day 1,2026-05-01,"Can I code offline?",Offline check,NA,NA,NA',
     ].join("\n"),
     "utf8",
   );

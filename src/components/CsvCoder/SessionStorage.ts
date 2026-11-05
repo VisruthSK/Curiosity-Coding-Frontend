@@ -1,5 +1,4 @@
 import type { CsvRow, SavedSession } from "./types";
-import { FLAG_FIELD } from "./utils";
 
 export const STORAGE_KEY_V1 = "curiosity-coding-tool:v1";
 
@@ -15,10 +14,6 @@ export function normalizeRow(row: CsvRow, fields: string[]): CsvRow {
   return Object.fromEntries(
     fields.map((field) => [field, row[field] == null ? "" : String(row[field])])
   );
-}
-
-export function ensureFlagField(fields: string[]) {
-  return fields.includes(FLAG_FIELD) ? fields : [...fields, FLAG_FIELD];
 }
 
 export function readSavedSession(): SavedSession | null {

@@ -3,6 +3,8 @@ import type { CsvRow } from "./types";
 export const LABEL_FIELD = "Label";
 export const NOTES_FIELD = "Notes";
 export const FLAG_FIELD = "Flag";
+export const IDENTITY_FIELDS = ["Class", "id", "Day", "Date", "Question"];
+export const CODING_FIELDS = [...IDENTITY_FIELDS, "Student Coding", LABEL_FIELD, NOTES_FIELD, FLAG_FIELD];
 
 export function isBlankOrNA(value: unknown): boolean {
   const str = String(value ?? "").trim();

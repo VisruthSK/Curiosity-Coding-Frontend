@@ -16,8 +16,8 @@ function createCsvFile(name: string) {
   writeFileSync(
     filePath,
     [
-      "Date,Question,Student Coding,Label,Notes",
-      '2026-06-01,"Can desktop export save?",Desktop check,NA,NA',
+      "Class,id,Day,Date,Question,Student Coding,Label,Notes,Flag",
+      'Example,1,Day 1,2026-06-01,"Can desktop export save?",Desktop check,NA,NA,NA',
     ].join("\n"),
     "utf8",
   );
@@ -86,8 +86,8 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
     args: {
       fileName: "desktop export Nora.csv",
       content: [
-        "Date,Question,Student Coding,Label,Notes,Flag",
-        "2026-06-01,Can desktop export save?,Desktop check,2b,Saved from desktop,NA",
+        "Class,id,Day,Date,Question,Student Coding,Label,Notes,Flag",
+        "Example,1,Day 1,2026-06-01,Can desktop export save?,Desktop check,2b,Saved from desktop,NA",
       ].join("\n"),
     },
   });

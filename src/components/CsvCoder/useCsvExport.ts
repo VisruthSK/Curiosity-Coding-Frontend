@@ -2,7 +2,7 @@ import { useState } from "preact/hooks";
 import { formatCsv } from "./csv";
 import { formatName, normalizeRow } from "./SessionStorage";
 import type { CsvRow } from "./types";
-import { isBlankOrNA, isTauriDesktop, LABEL_FIELD, NOTES_FIELD, FLAG_FIELD } from "./utils";
+import { CODING_FIELDS, isBlankOrNA, isTauriDesktop, LABEL_FIELD, NOTES_FIELD, FLAG_FIELD } from "./utils";
 
 function getBaseName(fileName: string) {
   return fileName.replace(/\.[^/.]+$/, "");
@@ -52,13 +52,8 @@ export function useCsvExport(
   const exportCsv = async () => {
     setError("");
 
-    const isCompare = fileName.toLowerCase().includes("compare");
-    const exportFields = isCompare
-      ? fields.filter(f => {
-          const lower = f.toLowerCase();
-          return ["class", "id", "day", "date", "question", "student coding", "label", "notes", "flag"].includes(lower);
-        })
-      : fields.filter(f => f !== "__QuestionNumber");
+    const isReview = /compare|alignment/i.test(fileName);
+    const exportFields = isReview ? CODING_FIELDS : fields.filter(f => f !== "__QuestionNumber");
 
     const exportRows = rows.map((row) => {
       // Normalize fields, ensuring only relevant fields are exported

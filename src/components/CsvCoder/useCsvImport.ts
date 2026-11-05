@@ -1,8 +1,8 @@
 import { useState } from "preact/hooks";
 import { parseCsvText } from "./csv";
-import { ensureFlagField, normalizeRow } from "./SessionStorage";
+import { normalizeRow } from "./SessionStorage";
 import type { CsvRow } from "./types";
-import { alignmentStatus, coderFields, LABEL_FIELD, NOTES_FIELD } from "./utils";
+import { alignmentStatus, coderFields, CODING_FIELDS, FLAG_FIELD, IDENTITY_FIELDS, LABEL_FIELD, NOTES_FIELD } from "./utils";
 
 function randomizeRows(rowsToRandomize: CsvRow[]) {
   const nextRows = [...rowsToRandomize];
@@ -23,12 +23,15 @@ export function useCsvImport(
     try {
       const { fields: parsedFields, rows: parsedRows } = parseCsvText(text);
 
-      let nextFields = [...parsedFields];
-      if (!nextFields.includes(LABEL_FIELD)) {
-        nextFields.push(LABEL_FIELD);
-      }
-      if (!nextFields.includes(NOTES_FIELD)) {
-        nextFields.push(NOTES_FIELD);
+      const isAlignment = fileName.toLowerCase().includes("alignment");
+      const isCompare = fileName.toLowerCase().includes("compare");
+      const isReview = isCompare || isAlignment;
+
+      const required = isReview ? [...IDENTITY_FIELDS, "Student Coding"] : CODING_FIELDS;
+      const missing = required.filter((field) => !parsedFields.includes(field));
+      if (missing.length) {
+        setError(`CSV is missing required columns: ${missing.join(", ")}.`);
+        return false;
       }
 
       if (!parsedRows.length) {
@@ -36,9 +39,8 @@ export function useCsvImport(
         return false;
       }
 
-      nextFields = ensureFlagField(nextFields);
+      const nextFields = isReview ? [...parsedFields, LABEL_FIELD, NOTES_FIELD, FLAG_FIELD] : [...parsedFields];
 
-      const isAlignment = fileName.toLowerCase().includes("alignment");
       const hasReference = parsedFields.includes("Reference");
       const hasReferenceNotes = parsedFields.includes("ReferenceNotes");
 
@@ -56,8 +58,7 @@ export function useCsvImport(
       });
 
       let sortedRows = preparedRows;
-      const isCompare = fileName.toLowerCase().includes("compare");
-      if (isCompare || isAlignment) {
+      if (isReview) {
         const coderKeys = coderFields(preparedRows[0] || {});
 
         const getAgreementScore = (row: CsvRow) => {
