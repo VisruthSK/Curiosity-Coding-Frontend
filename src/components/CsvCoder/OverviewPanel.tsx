@@ -1,14 +1,15 @@
 import { Icon, StatusPill, styles } from "./ui";
 import type { CsvRow } from "./types";
-import { isBlankOrNA, LABEL_FIELD, NOTES_FIELD, FLAG_FIELD } from "./utils";
+import { alignmentStatus, coderFields, isBlankOrNA, LABEL_FIELD, NOTES_FIELD, FLAG_FIELD } from "./utils";
 
 type OverviewPanelProps = {
   isCompareFile: boolean;
+  isAlignmentFile: boolean;
   rows: CsvRow[];
   onOpenRow: (index: number) => void;
 };
 
-export function OverviewPanel({ isCompareFile, rows, onOpenRow }: OverviewPanelProps) {
+export function OverviewPanel({ isCompareFile, isAlignmentFile, rows, onOpenRow }: OverviewPanelProps) {
   return (
     <section className="bg-white dark:bg-neutral-900 border border-stone-200 dark:border-neutral-800 rounded-lg p-4 sm:p-5 lg:p-6 xl:col-span-2 xl:min-h-0 xl:overflow-y-auto">
       <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
@@ -23,16 +24,7 @@ export function OverviewPanel({ isCompareFile, rows, onOpenRow }: OverviewPanelP
           const isFlagged = String(row[FLAG_FIELD] ?? "").trim().toUpperCase() === "TRUE";
 
           const keys = Object.keys(row || {});
-          const standardFieldsSet = new Set([
-            "question", "student coding", "reference", "referencenotes",
-            "vote", "votes", "totalvotes", "label", "notes", "flag", "id"
-          ]);
-          const coderKeys = isCompareFile
-            ? keys.filter(key => {
-                const k = key.toLowerCase();
-                return !standardFieldsSet.has(k) && !k.endsWith("notes") && !k.endsWith("flag");
-              })
-            : [];
+          const coderKeys = isCompareFile ? coderFields(row) : [];
 
           // Check flags per coder
           const coderFlags = coderKeys.map(key => {
@@ -59,13 +51,20 @@ export function OverviewPanel({ isCompareFile, rows, onOpenRow }: OverviewPanelP
                     : "text-sm font-semibold text-neutral-950 dark:text-neutral-50"
                 }
               >
-                Question {index + 1}
+                Question {row.__QuestionNumber || index + 1}
               </span>
               <span className="flex flex-wrap gap-2">
                 <StatusPill active={hasCoding} activeText="Coding" inactiveText="No coding" />
                 <StatusPill active={hasNotes} activeText="Note" inactiveText="No note" />
               </span>
-              {coderKeys.length > 0 && (() => {
+              {isAlignmentFile && (
+                <span className={alignmentStatus(row) === "Disagrees"
+                  ? "text-xs font-semibold text-red-700 dark:text-red-400"
+                  : "text-xs font-semibold text-neutral-600 dark:text-neutral-400"}>
+                  {alignmentStatus(row)}
+                </span>
+              )}
+              {!isAlignmentFile && coderKeys.length > 0 && (() => {
                 let votesVal = 0;
                 let totalVotesVal = coderKeys.length;
                 let hasVotesDefined = false;

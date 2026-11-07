@@ -16,8 +16,8 @@ function createCsvFile(name: string) {
   writeFileSync(
     filePath,
     [
-      "Date,Question,Student Coding,Label,Notes",
-      '2026-06-01,"Can desktop export save?",Desktop check,NA,NA',
+      "Class,id,Day,Date,Question,Student Coding,Label,Notes,Flag",
+      'Example,1,Day 1,2026-06-01,"Can desktop export save?",Desktop check,NA,NA,NA',
     ].join("\n"),
     "utf8",
   );
@@ -62,7 +62,7 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
   await page.getByLabel("Select CSV file").setInputFiles(csvPath);
   await page.getByLabel("2b").check();
   await page.getByLabel("Notes").fill("Saved from desktop");
-  await expect(page.getByText("v0.2.0")).toBeVisible();
+  await expect(page.getByText("v0.2.1")).toBeVisible();
   await expect(page.getByRole("link", { name: "Rubric" })).toHaveAttribute("href", rubricUrl);
   await expect(page.getByRole("link", { name: "Instructor diary" })).toHaveAttribute("href", instructorDiaryUrl);
   await page.getByRole("link", { name: "Rubric" }).click();
@@ -86,8 +86,8 @@ test("desktop export sends CSV content to the Tauri export command", async ({ pa
     args: {
       fileName: "desktop export Nora.csv",
       content: [
-        "Date,Question,Student Coding,Label,Notes,Flag",
-        "2026-06-01,Can desktop export save?,Desktop check,2b,Saved from desktop,NA",
+        "Class,id,Day,Date,Question,Student Coding,Label,Notes,Flag",
+        "Example,1,Day 1,2026-06-01,Can desktop export save?,Desktop check,2b,Saved from desktop,NA",
       ].join("\n"),
     },
   });

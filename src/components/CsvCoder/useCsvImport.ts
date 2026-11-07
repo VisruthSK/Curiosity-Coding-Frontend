@@ -1,8 +1,8 @@
 import { useState } from "preact/hooks";
 import { parseCsvText } from "./csv";
-import { ensureFlagField, normalizeRow } from "./SessionStorage";
+import { normalizeRow } from "./SessionStorage";
 import type { CsvRow } from "./types";
-import { LABEL_FIELD, NOTES_FIELD } from "./utils";
+import { alignmentStatus, coderFields, CODING_FIELDS, FLAG_FIELD, IDENTITY_FIELDS, LABEL_FIELD, NOTES_FIELD } from "./utils";
 
 function randomizeRows(rowsToRandomize: CsvRow[]) {
   const nextRows = [...rowsToRandomize];
@@ -23,12 +23,15 @@ export function useCsvImport(
     try {
       const { fields: parsedFields, rows: parsedRows } = parseCsvText(text);
 
-      let nextFields = [...parsedFields];
-      if (!nextFields.includes(LABEL_FIELD)) {
-        nextFields.push(LABEL_FIELD);
-      }
-      if (!nextFields.includes(NOTES_FIELD)) {
-        nextFields.push(NOTES_FIELD);
+      const isAlignment = fileName.toLowerCase().includes("alignment");
+      const isCompare = fileName.toLowerCase().includes("compare");
+      const isReview = isCompare || isAlignment;
+
+      const required = isReview ? [...IDENTITY_FIELDS, "Student Coding"] : CODING_FIELDS;
+      const missing = required.filter((field) => !parsedFields.includes(field));
+      if (missing.length) {
+        setError(`CSV is missing required columns: ${missing.join(", ")}.`);
+        return false;
       }
 
       if (!parsedRows.length) {
@@ -36,13 +39,15 @@ export function useCsvImport(
         return false;
       }
 
-      nextFields = ensureFlagField(nextFields);
+      const nextFields = isReview ? [...parsedFields, LABEL_FIELD, NOTES_FIELD, FLAG_FIELD] : [...parsedFields];
 
       const hasReference = parsedFields.includes("Reference");
       const hasReferenceNotes = parsedFields.includes("ReferenceNotes");
 
-      const preparedRows = parsedRows.map((row) => {
+      nextFields.push("__QuestionNumber");
+      const preparedRows = parsedRows.map((row, index) => {
         const normalized = normalizeRow(row, nextFields);
+        normalized.__QuestionNumber = String(index + 1);
         if (hasReference && (!normalized[LABEL_FIELD] || normalized[LABEL_FIELD].toLowerCase() === "na")) {
           normalized[LABEL_FIELD] = row["Reference"] || "";
         }
@@ -53,17 +58,8 @@ export function useCsvImport(
       });
 
       let sortedRows = preparedRows;
-      const isCompare = fileName.toLowerCase().includes("compare");
-      if (isCompare) {
-        const keys = Object.keys(preparedRows[0] || {});
-        const standardFieldsSet = new Set([
-          "question", "student coding", "reference", "referencenotes",
-          "vote", "votes", "totalvotes", "label", "notes", "flag", "id"
-        ]);
-        const coderKeys = keys.filter(key => {
-          const k = key.toLowerCase();
-          return !standardFieldsSet.has(k) && !k.endsWith("notes");
-        });
+      if (isReview) {
+        const coderKeys = coderFields(preparedRows[0] || {});
 
         const getAgreementScore = (row: CsvRow) => {
           const codes = coderKeys
@@ -78,7 +74,13 @@ export function useCsvImport(
           return maxFreq / codes.length;
         };
 
-        sortedRows = [...preparedRows].sort((a, b) => getAgreementScore(a) - getAgreementScore(b));
+        sortedRows = [...preparedRows].sort((a, b) => {
+          if (isAlignment) {
+            const disagreement = (row: CsvRow) => alignmentStatus(row) === "Disagrees" ? 0 : 1;
+            return disagreement(a) - disagreement(b) || Number(a.__QuestionNumber) - Number(b.__QuestionNumber);
+          }
+          return getAgreementScore(a) - getAgreementScore(b) || Number(a.__QuestionNumber) - Number(b.__QuestionNumber);
+        });
       } else {
         sortedRows = randomizeRows(preparedRows);
       }

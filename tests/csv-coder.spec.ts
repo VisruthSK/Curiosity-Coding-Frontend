@@ -9,12 +9,17 @@ const instructorDiaryUrl =
 
 test.use({ serviceWorkers: "block" });
 
+const codingHeader = ["Class", "id", "Day", "Date", "Question", "Student Coding", "Label", "Notes", "Flag"];
+
 function createCsvFile(name: string, rows: string[]) {
   const directory = mkdtempSync(join(tmpdir(), "curiosity-coding-"));
   const filePath = join(directory, name);
-  const header = "Date,Question,Student Coding,Label,Notes";
 
-  writeFileSync(filePath, [header, ...rows].join("\n"), "utf8");
+  writeFileSync(
+    filePath,
+    [codingHeader.join(","), ...rows.map((row) => `Example,1,Day 1,${row},NA`)].join("\n"),
+    "utf8",
+  );
   return filePath;
 }
 
@@ -50,10 +55,23 @@ test("browser mode does not show desktop window controls", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Close" })).toHaveCount(0);
 });
 
+test("rejects a CSV that lacks the schema columns", async ({ page }) => {
+  const csvPath = createCsvFixture(
+    "old coding.csv",
+    ["Date,Question,Student Coding,Label,Notes", "2026-05-01,Old question?,Old coding,NA,NA"].join("\n"),
+  );
+
+  await page.getByLabel("First name").fill("amy");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+
+  await expect(page.getByText("CSV is missing required columns: Class, id, Day, Flag.")).toBeVisible();
+});
+
 test("loads a CSV dropped onto the select file screen", async ({ page }) => {
   const csv = [
-    "Date,Question,Student Coding,Label,Notes",
-    "2026-05-01,Synthetic dropped question?,Synthetic dropped coding,NA,NA",
+    codingHeader.join(","),
+    "Example,1,Day 1,2026-05-01,Synthetic dropped question?,Synthetic dropped coding,NA,NA,NA",
   ].join("\n");
 
   await page.getByLabel("First name").fill("amy");
@@ -138,9 +156,9 @@ test("codes rows, reviews completion, and exports with title-cased name", async 
 
   expect(readFileSync(exportedPath, "utf8")).toBe(
     [
-      "Date,Question,Student Coding,Label,Notes,Flag",
-      "2026-01-12,How do I use R for this?,Clarification,2b,Check later,TRUE",
-      "2026-01-13,Can this apply to my major?,Application,2e,NA,NA",
+      codingHeader.join(","),
+      "Example,1,Day 1,2026-01-12,How do I use R for this?,Clarification,2b,Check later,TRUE",
+      "Example,1,Day 1,2026-01-13,Can this apply to my major?,Application,2e,NA,NA",
     ].join("\n"),
   );
 });
@@ -149,8 +167,8 @@ test("does not show compare coder details for non-compare files with date column
   const normalCsvPath = createCsvFixture(
     "ordinary coding.csv",
     [
-      "id,Date,Question,Student Coding,Label,Notes",
-      "row-1,2026-04-01,Synthetic ordinary question?,Synthetic student coding,NA,NA",
+      codingHeader.join(","),
+      "Example,row-1,Day 1,2026-04-01,Synthetic ordinary question?,Synthetic student coding,NA,NA,NA",
     ].join("\n"),
   );
 
@@ -173,8 +191,8 @@ test("keeps compare file fields visible for compare files", async ({ page }) => 
   const compareCsvPath = createCsvFixture(
     "ordinary compare.csv",
     [
-      "Question,Student Coding,Reference,ReferenceNotes,Vote,Votes,TotalVotes",
-      "Synthetic compare question?,Synthetic compare coding,2a,NA,NA,NA,NA",
+      "Class,id,Day,Date,Question,Student Coding,Reference,ReferenceNotes,Vote,Votes,TotalVotes",
+      "Example,1,Day 1,2026-01-01,Synthetic compare question?,Synthetic compare coding,2a,NA,NA,NA,NA",
     ].join("\n"),
   );
 
@@ -191,8 +209,8 @@ test("shows compare coder summary for compare files with coder columns", async (
   const compareCsvPath = createCsvFixture(
     "section compare.csv",
     [
-      "Question,Student Coding,Reference,ReferenceNotes,Ari,AriNotes,Bea,BeaNotes,Label,Notes",
-      "Compare this?,Original,2b,Reference note,2b,Ari note,2e,Bea note,NA,NA",
+      "Class,id,Day,Date,Question,Student Coding,Reference,ReferenceNotes,Ari,AriNotes,Bea,BeaNotes",
+      "Example,1,Day 1,2026-01-01,Compare this?,Original,2b,Reference note,2b,Ari note,2e,Bea note",
     ].join("\n"),
   );
 
@@ -214,15 +232,15 @@ test("shows compare coder summary for compare files with coder columns", async (
 });
 
 test("preserves CSV shape and escaped values on export", async ({ page }) => {
-  const fields = ["Date", "Question", "Student Coding", "Context", "Label", "Notes", "Follow Up", "ID"];
+  const fields = [...codingHeader, "Context", "Follow Up"];
   const weirdNote = "Line one, with comma\nLine two with \"quotes\"";
   const csvPath = createCsvFixture(
     "weird survey.csv",
     [
       fields.join(","),
-      '2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,,,"keep ""as,is""",abc-123',
-      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged,def-456",
-      "2026-02-03,Left blank on purpose,,Section C,,,,ghi-789",
+      'Example,abc-123,Day 1,2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",,,,Section A,"keep ""as,is"""',
+      "Example,def-456,Day 1,2026-02-02,Already coded?,Original,1a;2b,Existing note,,Section B,unchanged",
+      "Example,ghi-789,Day 1,2026-02-03,Left blank on purpose,,,,,Section C,",
     ].join("\n"),
   );
 
@@ -260,10 +278,10 @@ test("preserves CSV shape and escaped values on export", async ({ page }) => {
 
   expect(readFileSync(exportedPath, "utf8")).toBe(
     [
-      [...fields, "Flag"].join(","),
-      `2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",Section A,2b;2e,"${weirdNote.replaceAll('"', '""')}","keep ""as,is""",abc-123,NA`,
-      "2026-02-02,Already coded?,Original,Section B,1a;2b,Existing note,unchanged,def-456,NA",
-      "2026-02-03,Left blank on purpose,,Section C,NA,NA,,ghi-789,NA",
+      fields.join(","),
+      `Example,abc-123,Day 1,2026-02-01,"Comma, quote ""here"", and\nnew line","Student, original",2b;2e,"${weirdNote.replaceAll('"', '""')}",NA,Section A,"keep ""as,is"""`,
+      "Example,def-456,Day 1,2026-02-02,Already coded?,Original,1a;2b,Existing note,NA,Section B,unchanged",
+      "Example,ghi-789,Day 1,2026-02-03,Left blank on purpose,,NA,NA,NA,Section C,",
     ].join("\n"),
   );
 });
@@ -476,7 +494,8 @@ test("keybind settings popover rebinds shortcuts", async ({ page }) => {
   // Should show the new binding
   await expect(page.getByText("Ctrl+↓")).toBeVisible();
 
-  // Close popover by clicking outside (on the question text)
+  // The outside-click handler activates after the desktop webview delay.
+  await page.waitForTimeout(150);
   await page.getByText("First question?").click();
   await expect(page.getByText("Keyboard shortcuts")).toHaveCount(0);
 
@@ -494,7 +513,8 @@ test("keybind settings popover rebinds shortcuts", async ({ page }) => {
   await page.getByText("Reset to defaults").click();
   await expect(page.getByRole("button", { name: "Rebind Next shortcut" })).toHaveText("Ctrl+Enter");
 
-  // Close popover by clicking outside
+  // Wait for the outside-click handler to activate.
+  await page.waitForTimeout(150);
   await page.getByText("Second question?").click();
 
   // Ctrl+Enter should work again after reset
@@ -800,4 +820,58 @@ test("does not warn after reload when replacing a successfully exported CSV", as
   await page.getByLabel("Select CSV file").setInputFiles(secondCsv);
   await expect(page.getByText("Replacement question?")).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("reviews alignment disagreements first with stable question numbers", async ({ page }) => {
+  const csvPath = createCsvFixture("class Ari Alignment.csv", [
+    "Class,id,Day,Date,Question,Student Coding,Reference,ReferenceNotes,ReferenceFlag,Ari,AriNotes,AriFlag",
+    "Class A,1,Day 1,2026-01-01,First?,Original,2a,,,2a,,",
+    "Class A,2,Day 1,2026-01-01,Second?,Original,2a,,,2b,,",
+    "Class A,3,Day 1,2026-01-01,Third?,Original,2a,,,,,",
+    "Class A,4,Day 1,2026-01-01,Fourth?,Original,2a,,,2b,,",
+  ].join("\n"));
+  await page.getByLabel("First name").fill("ari");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+  await expect(page.getByText("Second?")).toBeVisible();
+  await expect(page.getByText("Question 2", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("2a")).toBeChecked();
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  const cards = page.getByRole("button").filter({ hasText: /^Question [1-4]/ });
+  await expect(cards).toHaveCount(4);
+  await expect(cards.nth(0)).toContainText("Question 2");
+  await expect(cards.nth(0)).toContainText("Disagrees");
+  await expect(cards.nth(1)).toContainText("Question 4");
+  await expect(cards.nth(1)).toContainText("Disagrees");
+  await expect(cards.nth(2)).toContainText("Question 1");
+  await expect(cards.nth(2)).toContainText("Agrees");
+  await expect(cards.nth(3)).toContainText("Question 3");
+  await expect(cards.nth(3)).toContainText("Unanswered");
+  await expect(cards.nth(0)).not.toContainText("No coding");
+  await cards.nth(0).click();
+  const codings = page.getByText("Codings").locator("xpath=..");
+  await expect(codings.getByText("2b").first()).toBeVisible();
+  await expect(codings.getByText("Class A")).toHaveCount(0);
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Fourth?")).toBeVisible();
+  await expect(page.getByText("Question 4", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("First?")).toBeVisible();
+  await expect(page.getByText("Question 1", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.getByText("Third?")).toBeVisible();
+  await expect(page.getByText("Question 3", { exact: true })).toBeVisible();
+});
+
+
+test("disagreement comparisons display the original survey day", async ({ page }) => {
+  const csvPath = createCsvFixture("disagree Compare.csv", [
+    "id,Day,Date,Class,Question,Student Coding,Vote,Votes,TotalVotes,Ari,AriNotes,AriFlag,Bea,BeaNotes,BeaFlag",
+    "1,I Wonder #17,2025-11-25,Example,Why?,Original,2a,1,2,2a,,,2b,,",
+  ].join("\n"));
+  await page.getByLabel("First name").fill("ari");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Select CSV file").setInputFiles(csvPath);
+  await expect(page.getByText("I Wonder #17", { exact: true })).toBeVisible();
+  await expect(page.getByText("disagree", { exact: true })).toHaveCount(0);
 });

@@ -40,6 +40,7 @@ type QuestionPanelProps = {
   currentRow: CsvRow | undefined;
   detailFields: string[];
   isCompareFile: boolean;
+  isAlignmentFile: boolean;
   selectedCodes: string[];
   isCurrentRowFlagged: boolean;
   onToggleFlag: () => void;
@@ -51,6 +52,7 @@ export function QuestionPanel({
   currentRow,
   detailFields,
   isCompareFile,
+  isAlignmentFile,
   selectedCodes,
   isCurrentRowFlagged,
   onToggleFlag,
@@ -59,7 +61,7 @@ export function QuestionPanel({
 }: QuestionPanelProps) {
   const standardFieldsSet = new Set([
     "question", "student coding", "reference", "referencenotes",
-    "vote", "votes", "totalvotes", "label", "notes", "flag", "id"
+    "vote", "votes", "totalvotes", "label", "notes", "flag", "id", "class", "day", "date", "referenceflag", "__questionnumber"
   ]);
 
   const keys = Object.keys(currentRow || {});
@@ -82,10 +84,10 @@ export function QuestionPanel({
   const requiredCompareFields = [
     "Student Coding", "Reference", "ReferenceNotes", "ReferenceFlag", "Vote", "Votes",
   ];
-  const compareFields = [...new Set([...detailFields, ...requiredCompareFields])];
+  const compareFields = [...new Set([...detailFields, ...(isCompareFile ? requiredCompareFields.filter(field => !isAlignmentFile || !["Vote", "Votes"].includes(field)) : [])])];
   const filteredDetailFields = compareFields.filter((field) => {
     const fLower = field.toLowerCase();
-    if (coderRelatedKeysSet.has(fLower) || fLower === "totalvotes") return false;
+    if (coderRelatedKeysSet.has(fLower) || fLower === "totalvotes" || fLower === "__questionnumber") return false;
     if (requiredCompareFields.some((required) => required.toLowerCase() === fLower)) return true;
     const value = String(currentRow?.[field] ?? "").trim();
     return value !== "" && value.toLowerCase() !== "na";
