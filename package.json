@@ -23,7 +23,7 @@
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-process": "^2.4.0",
     "@tauri-apps/plugin-updater": "^2.14.1",
-    "astro": "^7.3.3",
+    "astro": "^7.4.7",
     "d3-dsv": "^3.0.1",
     "preact": "^10.29.8",
     "tailwindcss-animate": "^1.0.7"
